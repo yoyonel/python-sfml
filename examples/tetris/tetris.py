@@ -11,10 +11,10 @@ from sfml import sf
 def main():
     seed(-1)
 
-    field_nb_rows = 20
-    field_nb_cols = 10
+    board_nb_rows = 20
+    board_nb_cols = 10
 
-    field = [[0 for _ in range(field_nb_cols)] for _ in range(field_nb_rows)]
+    board = [[0 for _ in range(board_nb_cols)] for _ in range(board_nb_rows)]
 
     @dataclass
     class Point:
@@ -51,18 +51,17 @@ def main():
     try:
         tex_tiles = sf.Texture.from_file("data/tiles.png")
         tex_background = sf.Texture.from_file("data/background.png")
-        # tex_frame = sf.Texture.from_file("data/frame.png")
     except IOError as error:
         raise RuntimeError("An error occured: {0}".format(error))
 
-    sprite_tiles = sf.Sprite(tex_tiles)
-    sprite_tiles.texture_rectangle = (0, 0, 18, 18)
+    sprite_quads = sf.Sprite(tex_tiles)
+    sprite_quads.texture_rectangle = (0, 0, 18, 18)
 
     sprite_background = sf.Sprite(tex_background)
-    # sprite_frame = sf.Sprite(tex_frame)
 
     dx = 0
     rotate = False
+    instant_scroll_down = False
     color_num = 1
     timer = 0
     delay = 0.3
@@ -71,9 +70,9 @@ def main():
 
     def check() -> bool:
         for quad in tetromino:
-            if quad.x < 0 or quad.x >= field_nb_cols or quad.y >= field_nb_rows:
+            if quad.x < 0 or quad.x >= board_nb_cols or quad.y >= board_nb_rows:
                 return False
-            elif field[quad.y][quad.x] != 0:
+            elif board[quad.y][quad.x] != 0:
                 return False
         return True
 
@@ -106,59 +105,83 @@ def main():
                 if event['code'] == sf.Keyboard.DOWN:
                     delay = 0.05
 
+                if event['code'] == sf.Keyboard.SPACE:
+                    instant_scroll_down = True
+
         # before moving/rotating, save the current state/position
         tetromino_last_state = deepcopy(tetromino)
 
-        # Rotate
-        if rotate and tetromino_shape != 6:
-            q_cor = tetromino[1]  # center of rotation
+        # Instant scroll down
+        if instant_scroll_down:
+            while check():
+                # scroll down current tetromino
+                for q in tetromino:
+                    q.y += 1
+
             for q in tetromino:
-                q.x, q.y = q_cor.x - (q.y - q_cor.y), q_cor.y + (q.x - q_cor.x)
+                q.y -= 1
+
+            # update field
+            for q in tetromino:
+                board[q.y][q.x] = int(color_num)
+
+            # Choose a new tetromino
+            tetromino_shape, tetromino = new_tetromino()
+
+            # Choose a new color
+            color_num = randint(1, 7)
+        else:
+            # Rotate
+            if rotate and tetromino_shape != 6:
+                q_cor = tetromino[1]  # center of rotation
+                for q in tetromino:
+                    q.x, q.y = q_cor.x - (q.y - q_cor.y), q_cor.y + (q.x - q_cor.x)
+                if not check():
+                    tetromino = deepcopy(tetromino_last_state)
+
+            # Move Left Right
+            for q in tetromino:
+                q.x += dx
             if not check():
                 tetromino = deepcopy(tetromino_last_state)
 
-        # Move Left Right
-        for q in tetromino:
-            q.x += dx
-        if not check():
-            tetromino = deepcopy(tetromino_last_state)
+            # Tick
+            if timer > delay:
+                tetromino_last_state = deepcopy(tetromino)
 
-        # Tick
-        if timer > delay:
-            tetromino_last_state = deepcopy(tetromino)
+                # scroll down current tetromino
+                for q in tetromino:
+                    q.y += 1
 
-            # scroll down current tetromino
-            for q in tetromino:
-                q.y += 1
+                if not check():
+                    # update field
+                    for q in tetromino_last_state:
+                        board[q.y][q.x] = int(color_num)
 
-            if not check():
-                # update field
-                for q in tetromino_last_state:
-                    field[q.y][q.x] = int(color_num)
+                    # Choose a new tetromino
+                    tetromino_shape, tetromino = new_tetromino()
 
-                # Choose a new tetromino
-                tetromino_shape, tetromino = new_tetromino()
+                    # Choose a new color
+                    color_num = randint(1, 7)
 
-                # Choose a new color
-                color_num = randint(1, 7)
-
-            timer = 0
+                timer = 0
 
         # check lines
-        k = field_nb_rows - 1
-        for i in range(field_nb_rows-1, 0, -1):
+        k = board_nb_rows - 1
+        for i in range(board_nb_rows-1, 0, -1):
             count = 0
-            for j in range(field_nb_cols):
-                if field[i][j]:
+            for j in range(board_nb_cols):
+                if board[i][j]:
                     count += 1
-                field[k][j] = field[i][j]
-            if count < field_nb_cols:
+                board[k][j] = board[i][j]
+            if count < board_nb_cols:
                 k -= 1
 
         # reset
         dx = 0
         rotate = False
         delay = 0.3
+        instant_scroll_down = False
 
         # draw
         # clear the window
@@ -167,20 +190,20 @@ def main():
         window.draw(sprite_background)
 
         # render field
-        for i, row_field in enumerate(field):
+        for i, row_field in enumerate(board):
             for j, color_in_field in enumerate(row_field):
                 if color_in_field != 0:
-                    sprite_tiles.texture_rectangle = (color_in_field * 18, 0, 18, 18)
-                    sprite_tiles.position = j * 18, i * 18
-                    sprite_tiles.move((28, 31))  # offset
-                    window.draw(sprite_tiles)
+                    sprite_quads.texture_rectangle = (color_in_field * 18, 0, 18, 18)
+                    sprite_quads.position = j * 18, i * 18
+                    sprite_quads.move((28, 31))  # offset
+                    window.draw(sprite_quads)
 
         # render current tetromino
         for quad in tetromino:
-            sprite_tiles.texture_rectangle = (color_num * 18, 0, 18, 18)
-            sprite_tiles.position = quad.x * 18, quad.y * 18
-            sprite_tiles.move((28, 31))  # offset
-            window.draw(sprite_tiles)
+            sprite_quads.texture_rectangle = (color_num * 18, 0, 18, 18)
+            sprite_quads.position = quad.x * 18, quad.y * 18
+            sprite_quads.move((28, 31))  # offset
+            window.draw(sprite_quads)
 
         # window.draw(sprite_frame)
 
