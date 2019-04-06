@@ -5,6 +5,7 @@ from math import cos
 
 from sfml import sf
 
+
 class Effect(sf.Drawable):
     def __init__(self, name):
         sf.Drawable.__init__(self)
@@ -33,6 +34,7 @@ class Effect(sf.Drawable):
             target.draw(error, states)
 
     name = property(_get_name)
+
 
 class Pixelate(Effect):
     def __init__(self):
@@ -126,11 +128,12 @@ class StormBlink(Effect):
         self.shader.set_parameter("storm_position", x * 800, y * 600)
         self.shader.set_parameter("storm_inner_radius", radius / 3)
         self.shader.set_parameter("storm_total_radius", radius)
-        self.shader.set_parameter("blink_alpha", 0.5 + cos(time*3) * 0.25)
+        self.shader.set_parameter("blink_alpha", 0.5 + cos(time * 3) * 0.25)
 
     def on_draw(self, target, states):
         states.shader = self.shader
         target.draw(self.points, states)
+
 
 class Edge(Effect):
     def __init__(self):
@@ -203,10 +206,8 @@ if __name__ == "__main__":
     # create the message background
     try:
         text_background_texture = sf.Texture.from_file("data/text-background.png")
-
     except IOError as error:
-        print("An error occured: {0}".format(error))
-        exit(1)
+        raise RuntimeError("An error occured: {0}".format(error))
 
     text_background = sf.Sprite(text_background_texture)
     text_background.position = (0, 520)
@@ -215,10 +216,8 @@ if __name__ == "__main__":
     # load the messages font
     try:
         font = sf.Font.from_file("data/sansation.ttf")
-
     except IOError as error:
-        print("An error occured: {0}".format(error))
-        exit(1)
+        raise RuntimeError("An error occured: {0}".format(error))
 
     # create the description text
     description = sf.Text("Current effect: {0}".format(effects[current].name), font, 20)
@@ -254,18 +253,21 @@ if __name__ == "__main__":
 
                 # left arrow key: previous shader
                 elif event['code'] == sf.Keyboard.LEFT:
-                    if current == 0: current = len(effects) - 1
-                    else: current -= 1
+                    if current == 0:
+                        current = len(effects) - 1
+                    else:
+                        current -= 1
 
                     description.string = "Current effect: {0}".format(effects[current].name)
 
                 # right arrow key: next shader
                 elif event['code'] == sf.Keyboard.RIGHT:
-                    if current == len(effects) - 1: current = 0
-                    else: current += 1
+                    if current == len(effects) - 1:
+                        current = 0
+                    else:
+                        current += 1
 
                     description.string = "Current effect: {0}".format(effects[current].name)
-
 
         # clear the window
         window.clear(sf.Color(255, 128, 0))
