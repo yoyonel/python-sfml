@@ -29,7 +29,8 @@ class Player:
 
     speedIdlingResistance: float = -.8
     speedOffroadResistance: float = -1.0
-    speedAcceleration: float = .4 * 2
+    # TODO: adapt acceleration
+    speedAcceleration: float = .4 * 20
     speedBraking: float = -2.0
 
     sprite: sf.Sprite = field(init=False)

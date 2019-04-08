@@ -3,13 +3,11 @@
 from typing import Dict
 from sfml import sf
 
+from . line import Line
 from . background import Background
 from . camera import Camera
 from . circuit import Circuit
 from . player import Player
-from . project_point import ProjectedPoint
-from . rendering import draw_quad
-from . road import road_width
 from . screen import Screen
 
 nb_lines_in_screen = 300
@@ -48,6 +46,9 @@ def main():
 
     player = Player(tex_coord_t=98)
     player.create_sprite(screen)
+
+    Line.screen = screen
+    Line.cam_depth = camera.depth
 
     # start the game loop
     while app.is_open:
@@ -96,7 +97,6 @@ def main():
         app.draw(background.sprite)
 
         start_pos = int(player.z / circuit.seg_length) % circuit.nb_lines
-        cam_h = player.y + circuit.lines[start_pos].center_of_line.y
 
         if not player.is_stopped:
             turn_weight = min(player.speed * .0005, 0.04)
@@ -115,8 +115,7 @@ def main():
                 player.steer_straight()
 
             # Background parallax link to road curve
-            background.update_position(circuit.lines[start_pos].curve,
-                                       player.speed)
+            background.update_position(circuit.lines[start_pos].curve, player.speed)
 
             # TODO: régler la sensibilité de ce parametre physique
             # part that forces the car to stray from track when the road cruves
@@ -125,54 +124,8 @@ def main():
             # elif player.is_driving_backward:
             #     player.x += (lines[start_pos].curve * (player.speed / 8000.0))
 
-        maxy = screen.height
-        x = 0
-        dx = 0
-
         # draw grass, rumble, road
-        cur_prev_lines = zip(
-            circuit.lines[start_pos:start_pos + nb_lines_in_screen],
-            circuit.lines[(start_pos - 1):(start_pos - 1) + nb_lines_in_screen])
-        for n, (cur_line, prev_line) in enumerate(cur_prev_lines,
-                                                  start=start_pos):
-            cam_x = player.x * road_width - x
-            cam_z = (start_pos - (n >= circuit.nb_lines) * circuit.nb_lines
-                     ) * circuit.seg_length
-            cur_line.project(cam=sf.Vector3(cam_x, cam_h, cam_z),
-                             screen=screen, cam_depth=camera.depth)
-
-            x += dx
-            dx += cur_line.curve
-
-            # clip y-screen_coordinate
-            cur_line.clip = maxy
-            if cur_line.screen_coord.y > maxy:
-                continue
-            maxy = cur_line.screen_coord.y
-
-            sc_cur_line = cur_line.screen_coord
-            sc_prev_line = prev_line.screen_coord
-
-            n_modulo_3 = (n // 3) % 2
-
-            grass = sf.Color(16, 200, 16) if n_modulo_3 else sf.Color(0, 154, 0)
-            rumble = sf.Color.WHITE if n_modulo_3 else sf.Color.BLACK
-            road = sf.Color(107, 107, 107) if n_modulo_3 else sf.Color(105, 105,
-                                                                       105)
-
-            draw_quad(app, grass,
-                      ProjectedPoint(0, sc_prev_line.y, screen.width),
-                      ProjectedPoint(0, sc_cur_line.y, screen.width))
-            draw_quad(app, rumble,
-                      ProjectedPoint(sc_prev_line.x, sc_prev_line.y,
-                                     sc_prev_line.w * 1.2),
-                      ProjectedPoint(sc_cur_line.x, sc_cur_line.y,
-                                     sc_cur_line.w * 1.2))
-            draw_quad(app, road,
-                      ProjectedPoint(sc_prev_line.x, sc_prev_line.y,
-                                     sc_prev_line.w),
-                      ProjectedPoint(sc_cur_line.x, sc_cur_line.y,
-                                     sc_cur_line.w))
+        circuit.update_and_draw(nb_lines_in_screen, player, screen, app)
 
         # Reverse order (painter depth technique)
         # https://en.wikipedia.org/wiki/Painter%27s_algorithm

@@ -1,16 +1,12 @@
 """
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 from sfml import sf
 
 from . project_point import ProjectedPoint
-from . road import road_width
+from . road import Road
 from . screen import Screen
-
-
-class Road(object):
-    pass
 
 
 @dataclass
@@ -26,18 +22,23 @@ class Line:
     sprite_x: int = 0
     tex_object: Optional[sf.Texture] = None
 
-    def project(self, cam: sf.Vector3,
-                screen: Screen,
-                cam_depth: float) -> None:
+    screen: Screen = field(init=False)
+    cam_depth: float = field(init=False)
+
+    def project(self,
+                cam: sf.Vector3,
+                # screen: Screen,
+                # cam_depth: float,
+                ) -> None:
         x, y, z = self.center_of_line
 
-        self.scale = cam_depth / (z - cam.z)
+        self.scale = self.cam_depth / (z - cam.z)
         scale = self.scale
 
         self.screen_coord = ProjectedPoint(
-            (1 + scale * (x - cam.x)) * screen.half_width,
-            (1 - scale * (y - cam.y)) * screen.half_height,
-            scale * road_width * screen.half_width,
+            (1 + scale * (x - cam.x)) * self.screen.half_width,
+            (1 - scale * (y - cam.y)) * self.screen.half_height,
+            scale * Road.width * self.screen.half_width,
         )
 
     def draw_sprite(self, app: sf.RenderWindow, screen: Screen):
