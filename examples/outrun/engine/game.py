@@ -14,7 +14,7 @@ nb_lines_in_screen = 300
 
 
 def main():
-    screen = Screen()
+    screen = Screen(1024, 768)
     camera = Camera()
 
     # create the main window
@@ -44,11 +44,17 @@ def main():
     circuit.set_object(lambda i: i > 800 and i % 20 == 0, -1.2, tex_objects[1])
     circuit.set_object(lambda i: i == 400, -1.2, tex_objects[7])
 
-    player = Player(tex_coord_t=98)
+    id_car = 1
+    player = Player(tex_coord_t=(43 + 6)*(id_car*2),
+                    maxForwardSpeed=400*3,
+                    scale=5.0)
     player.create_sprite(screen)
 
     Line.screen = screen
     Line.cam_depth = camera.depth
+
+    speed_text = sf.Text(string="0", font=screen.font, character_size=50)
+    speed_text.position = screen.width - 200, screen.height - 80
 
     # start the game loop
     while app.is_open:
@@ -134,6 +140,9 @@ def main():
             line.draw_sprite(app, screen)
 
         app.draw(player.sprite)
+
+        speed_text.string = "{:.0f} kmh".format(player.speed)
+        app.draw(speed_text)
 
         # finally, display the rendered frame on screen
         app.display()

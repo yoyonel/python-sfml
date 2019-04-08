@@ -10,6 +10,8 @@ TODO:
 - handle textures for grass, rumble, road
 - refactor the code (OO, dataclass, helpers/func/methods, typing, ...)
 - [HARD] Using Fixed-point arithmetic :p
+- real speed (km/hour)
+- GPGPU: raycasting + point sprites rendering
 """
 
 from examples.outrun.engine.game import main

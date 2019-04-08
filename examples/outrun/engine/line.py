@@ -25,11 +25,11 @@ class Line:
     screen: Screen = field(init=False)
     cam_depth: float = field(init=False)
 
-    def project(self,
-                cam: sf.Vector3,
-                # screen: Screen,
-                # cam_depth: float,
-                ) -> None:
+    def project(self, cam: sf.Vector3) -> None:
+        """
+
+        :param cam:
+        """
         x, y, z = self.center_of_line
 
         self.scale = self.cam_depth / (z - cam.z)

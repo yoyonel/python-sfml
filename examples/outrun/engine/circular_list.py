@@ -2,6 +2,9 @@
 # https://stackoverflow.com/a/47606550
 """
 import operator
+from typing import _alias, T
+
+TCircularList = _alias(list, T, inst=False)
 
 
 class CircularList(list):

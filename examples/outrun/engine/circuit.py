@@ -5,11 +5,11 @@ from math import sin
 from sfml import sf
 from typing import Callable, Iterator
 
-from . circular_list import CircularList
-from . line import Line
-from . project_point import ProjectedPoint
-from . rendering import draw_quad
-from . road import Road
+from .circular_list import CircularList, TCircularList
+from .line import Line
+from .project_point import ProjectedPoint
+from .rendering import draw_quad
+from .road import Road
 
 
 @dataclass
@@ -17,7 +17,7 @@ class Circuit:
     nb_lines: int = 1600
     seg_length: int = 200
 
-    lines: CircularList = field(init=False)
+    lines: TCircularList[Line] = field(init=False)
 
     def build(self):
         """Define circuit with parametric equations for y,z components
@@ -62,15 +62,18 @@ class Circuit:
         dx = 0
         maxy = screen.height
 
+        grass_colors = (sf.Color(0, 154, 0), sf.Color(16, 200, 16))
+        rumble_colors = (sf.Color.BLACK, sf.Color.WHITE)
+        road_colors = (sf.Color(105, 105, 105), sf.Color(107, 107, 107))
+
         cur_prev_lines = zip(
             self.lines[start_pos:start_pos + nb_lines_in_screen],
             self.lines[(start_pos - 1):(start_pos - 1) + nb_lines_in_screen])
-        for n, (cur_line, prev_line) in enumerate(cur_prev_lines,
-                                                  start=start_pos):
-            cam_x = player.x * Road.width - x
-            cam_z = (start_pos - (n >= self.nb_lines) * self.nb_lines
-                     ) * self.seg_length
-            cur_line.project(cam=sf.Vector3(cam_x, cam_h, cam_z))
+        for n, (cur_line, prev_line) in enumerate(cur_prev_lines, start_pos):
+            cam_z = (start_pos -
+                     (n >= self.nb_lines) * self.nb_lines) * self.seg_length
+            cur_line.project(
+                cam=sf.Vector3(player.x * Road.width - x, cam_h, cam_z))
 
             x += dx
             dx += cur_line.curve
@@ -86,20 +89,15 @@ class Circuit:
 
             n_modulo_3 = (n // 3) % 2
 
-            grass = sf.Color(16, 200, 16) if n_modulo_3 else sf.Color(0, 154, 0)
-            rumble = sf.Color.WHITE if n_modulo_3 else sf.Color.BLACK
-            road = sf.Color(107, 107, 107) if n_modulo_3 else sf.Color(105, 105,
-                                                                       105)
-
-            draw_quad(app, grass,
+            draw_quad(app, grass_colors[n_modulo_3],
                       ProjectedPoint(0, sc_prev_line.y, screen.width),
                       ProjectedPoint(0, sc_cur_line.y, screen.width))
-            draw_quad(app, rumble,
+            draw_quad(app, rumble_colors[n_modulo_3],
                       ProjectedPoint(sc_prev_line.x, sc_prev_line.y,
                                      sc_prev_line.w * 1.2),
                       ProjectedPoint(sc_cur_line.x, sc_cur_line.y,
                                      sc_cur_line.w * 1.2))
-            draw_quad(app, road,
+            draw_quad(app, road_colors[n_modulo_3],
                       ProjectedPoint(sc_prev_line.x, sc_prev_line.y,
                                      sc_prev_line.w),
                       ProjectedPoint(sc_cur_line.x, sc_cur_line.y,
