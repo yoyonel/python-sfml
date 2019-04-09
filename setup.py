@@ -130,7 +130,9 @@ with open('README.md', 'r') as f:
 
 ext_modules=[system, window, graphics, audio, network]
 
-install_requires = []
+install_requires = [
+    'PyOpenGL>=3.1.0'
+]
 
 if sys.version_info < (3, 4):
     install_requires.append('enum34')
