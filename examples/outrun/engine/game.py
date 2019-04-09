@@ -1,11 +1,11 @@
 """
 """
-import functools
+from collections import defaultdict
 from typing import Dict
-# http://pyopengl.sourceforge.net/documentation/
-from OpenGL.GL import glGenQueries, glQueryCounter, GL_TIMESTAMP, \
-    glGetQueryObjectiv, GL_QUERY_RESULT_AVAILABLE, glGetInteger64v, GLint64
-
+from examples.outrun.engine.profiling import (
+    timeit_gpu_results,
+    profile_gpu
+)
 from sfml import sf
 
 from . line import Line
@@ -14,44 +14,9 @@ from . camera import Camera
 from . circuit import Circuit
 from . player import Player
 from . screen import Screen
+from . utils import truncate_middle
 
 nb_lines_in_screen = 300
-
-
-timeit_gpu_results = {}
-
-
-def profile_gpu(func_exit_condition=lambda: True):
-    """
-    http://pyopengl.sourceforge.net/documentation/manual-3.0/glGet.html
-    http://pyopengl.sourceforge.net/documentation/manual-3.0/glGenQueries.html
-
-    :param func_exit_condition:
-    """
-    def decorator_timeit_gpu(func):
-        # TODO: cache this variables
-        id_query_timer = next(iter(glGenQueries(1)))
-        timer1 = GLint64()
-        timer2 = GLint64()
-
-        @functools.wraps(func)
-        def wrapper_timeit_gpu(*args, **kwargs):
-            glQueryCounter(id_query_timer, GL_TIMESTAMP)
-
-            glGetInteger64v(GL_TIMESTAMP, timer1)
-
-            result = func(*args, **kwargs)
-
-            done = False
-            while not done and func_exit_condition():
-                done = glGetQueryObjectiv(id_query_timer,
-                                          GL_QUERY_RESULT_AVAILABLE)
-            glGetInteger64v(GL_TIMESTAMP, timer2)
-
-            timeit_gpu_results[func.__name__] = timer2.value - timer1.value
-            return result
-        return wrapper_timeit_gpu
-    return decorator_timeit_gpu
 
 
 def main():
@@ -99,12 +64,11 @@ def main():
     speed_text.position = screen.width - 250, screen.height - 80
 
     font = sf.Font.from_file('data/sansation.ttf')
-    profiling_text = sf.Text(string="gpu", font=font, character_size=30)
-    profiling_text.position = 0, screen.height - 80
+    profiling_text = defaultdict(lambda: sf.Text(font=font, character_size=20))
 
-    acc_elapsed_time_in_ms = 0.0
-    elapsed_time_in_ms = 0.0
-    nb_elapsed_time = 0
+    acc_elapsed_time_in_ms = defaultdict(float)
+    elapsed_time_in_ms = defaultdict(float)
+    nb_elapsed_time = defaultdict(int)
 
     # start the game loop
     while app.is_open:
@@ -149,10 +113,6 @@ def main():
             while player.z < 0:
                 player.z += circuit.nb_lines * circuit.seg_length
 
-            # clear the window
-            app.clear(sf.Color(105, 205, 4))
-            app.draw(background.sprite)
-
             start_pos = int(player.z / circuit.seg_length) % circuit.nb_lines
 
             if not player.is_stopped:
@@ -176,36 +136,57 @@ def main():
                                            player.speed)
 
                 # TODO: régler la sensibilité de ce parametre physique
-                # part that forces the car to stray from track when the road cruves
-                # if player.is_driving_forward:
-                #     player.x -= (lines[start_pos].curve * (player.speed / 8000.0))
-                # elif player.is_driving_backward:
-                #     player.x += (lines[start_pos].curve * (player.speed / 8000.0))
+                player.per_loop_drift(circuit.lines[start_pos].curve)
+
+            # clear the window
+            app.clear(sf.Color(105, 205, 4))
+
+            @profile_gpu(func_exit_condition=lambda: app.is_open)
+            def _render_background():
+                app.draw(background.sprite)
+            _render_background()
 
             # draw grass, rumble, road
-            circuit.update_and_draw(nb_lines_in_screen, player, screen, app)
+            @profile_gpu(func_exit_condition=lambda: app.is_open)
+            def _render_road():
+                circuit.update_and_draw(nb_lines_in_screen, player, screen, app)
+            _render_road()
 
-            # Reverse order (painter depth technique)
-            # https://en.wikipedia.org/wiki/Painter%27s_algorithm
-            for line in circuit.lines[
-                        start_pos: start_pos + nb_lines_in_screen][::-1]:
-                line.draw_sprite(app, screen)
+            @profile_gpu(func_exit_condition=lambda: app.is_open)
+            def _render_objects():
+                # Reverse order (painter depth technique)
+                # https://en.wikipedia.org/wiki/Painter%27s_algorithm
+                for line in circuit.lines[
+                            start_pos: start_pos + nb_lines_in_screen][::-1]:
+                    line.draw_sprite(app, screen)
+            _render_objects()
 
-            app.draw(player.sprite)
+            @profile_gpu(func_exit_condition=lambda: app.is_open)
+            def _render_car():
+                app.draw(player.sprite)
+            _render_car()
 
+            # render text with car speed
             speed_text.string = "{:.0f} kmh".format(player.speed)
             app.draw(speed_text)
 
         _main_loop()
 
-        acc_elapsed_time_in_ms += timeit_gpu_results['_main_loop'] / 1000000.0
-        nb_elapsed_time += 1
-        if not(nb_elapsed_time % 60):
-            elapsed_time_in_ms = acc_elapsed_time_in_ms / 60.0
-            nb_elapsed_time = 0
-            acc_elapsed_time_in_ms = 0
-        profiling_text.string = "gpu = {:4.4} ms".format(elapsed_time_in_ms)
-        app.draw(profiling_text)
+        # GPU Profiling
+        for i, func_name in enumerate(timeit_gpu_results, start=1):
+            acc_elapsed_time_in_ms[func_name] += timeit_gpu_results[func_name] / 1000000.0
+            nb_elapsed_time[func_name] += 1
+            if not(nb_elapsed_time[func_name] % 60):
+                elapsed_time_in_ms[func_name] = acc_elapsed_time_in_ms[func_name] / 60.0
+                nb_elapsed_time[func_name] = 0
+                acc_elapsed_time_in_ms[func_name] = 0
+                # https://stackoverflow.com/questions/5676646/how-can-i-fill-out-a-python-string-with-spaces/38505737
+            profiling_text[func_name].string = f"[gpu] {truncate_middle(func_name.ljust(15), 15)} = {elapsed_time_in_ms[func_name]:4.4} ms"
+            profiling_text[func_name].position = (
+                0,
+                screen.height - (profiling_text[func_name].font.get_line_spacing(profiling_text[func_name].character_size) * (i + 1/3))
+            )
+            app.draw(profiling_text[func_name])
 
         # finally, display the rendered frame on screen
         app.display()

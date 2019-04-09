@@ -119,3 +119,10 @@ class Player:
 
         # causes the ground to shake
         self.y += (1 + randint(0, 298))
+
+    def per_loop_drift(self, road_curve: float):
+        """part that forces the car to stray from track when the road curve"""
+        if self.is_driving_forward:
+            self.x -= (road_curve * (self.speed / 80000.0))
+        elif self.is_driving_backward:
+            self.x += (road_curve * (self.speed / 80000.0))
