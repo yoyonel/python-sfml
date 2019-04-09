@@ -47,15 +47,16 @@ def main():
     # build circuit: create the road (curve, height, ...)
     circuit.build()
     # add objects along the road
-    circuit.set_object(lambda i: i < 300 and i % 20 == 0, -2.5, tex_objects[5])
-    circuit.set_object(lambda i: i % 17 == 0, 2.0, tex_objects[6])
-    circuit.set_object(lambda i: i > 300 and i % 20 == 0, -0.7, tex_objects[4])
-    circuit.set_object(lambda i: i > 800 and i % 20 == 0, -1.2, tex_objects[1])
     circuit.set_object(lambda i: i == 400, -1.2, tex_objects[7])
+    circuit.set_object(lambda i: i < 300 and i % 20 == 0, -2.5, tex_objects[5])
+    circuit.set_object(lambda i: i > 800 and i % 20 == 0, -1.2, tex_objects[1])
+    circuit.set_object(lambda i: i > 300 and i % 20 == 0, -0.7, tex_objects[4])
+    circuit.set_object(lambda i: i % 17 == 0, 2.0, tex_objects[6])
 
     id_car = 1
     player = Player(tex_coord_t=(43 + 6)*(id_car*2), maxForwardSpeed=400*3,
-                    scale=3.0)
+                    scale=5.0,
+                    speedOffroadResistance=-5.0)
     player.create_sprite(screen)
 
     Line.screen = screen
@@ -114,10 +115,13 @@ def main():
             while player.z < 0:
                 player.z += circuit.nb_lines * circuit.seg_length
 
+            if player.is_player_offroad:
+                player.per_loop_offroad()
+
             start_pos = int(player.z / circuit.seg_length) % circuit.nb_lines
 
             if not player.is_stopped:
-                turn_weight = min(player.speed * .0005, 0.04)
+                turn_weight = min(player.speed * .0005, 0.04) * 3
 
                 if (sf.Keyboard.is_key_pressed(sf.Keyboard.RIGHT) and
                     player.is_driving_forward) or \
