@@ -11,7 +11,8 @@ TODO:
 - refactor the code (OO, dataclass, helpers/func/methods, typing, ...)
 - [HARD] Using Fixed-point arithmetic :p
 - real speed (km/hour)
-- GPGPU: raycasting + point sprites rendering
+- GPGPU - Ray-casting + Point Sprites Rendering
+- separate update and draw for road
 """
 
 from examples.outrun.engine.game import main

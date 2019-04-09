@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 from typing import Optional
 from sfml import sf
 
-from . project_point import ProjectedPoint
-from . road import Road
-from . screen import Screen
+from examples.outrun.engine.project_point import ProjectedPoint
+from examples.outrun.engine.road import Road
+from examples.outrun.engine.screen import Screen
 
 
 @dataclass

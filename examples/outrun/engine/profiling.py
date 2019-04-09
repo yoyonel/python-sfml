@@ -10,6 +10,11 @@ from OpenGL.raw.GL._types import GLint64
 timeit_gpu_results = {}
 
 
+@functools.lru_cache(maxsize=10)
+def get_query_and_timers(func_name):
+    return next(iter(glGenQueries(1))), GLint64(), GLint64()
+
+
 def profile_gpu(func_exit_condition=lambda: True):
     """
     http://pyopengl.sourceforge.net/documentation/manual-3.0/glGet.html
@@ -17,11 +22,6 @@ def profile_gpu(func_exit_condition=lambda: True):
 
     :param func_exit_condition:
     """
-
-    @functools.lru_cache(maxsize=50)
-    def get_query_and_timers(func_name):
-        return next(iter(glGenQueries(1))), GLint64(), GLint64()
-
     def decorator_timeit_gpu(func):
         id_query_timer, timer1, timer2 = get_query_and_timers(func.__name__)
 

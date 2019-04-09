@@ -8,13 +8,13 @@ from examples.outrun.engine.profiling import (
 )
 from sfml import sf
 
-from . line import Line
-from . background import Background
-from . camera import Camera
-from . circuit import Circuit
-from . player import Player
-from . screen import Screen
-from . utils import truncate_middle
+from examples.outrun.engine.line import Line
+from examples.outrun.engine.background import Background
+from examples.outrun.engine.camera import Camera
+from examples.outrun.engine.circuit import Circuit
+from examples.outrun.engine.player import Player
+from examples.outrun.engine.screen import Screen
+from examples.outrun.engine.utils import truncate_middle
 
 nb_lines_in_screen = 300
 
@@ -41,10 +41,12 @@ def main():
 
     # Background
     background = Background()
+
+    # Circuit/Road
     circuit = Circuit()
-
+    # build circuit: create the road (curve, height, ...)
     circuit.build()
-
+    # add objects along the road
     circuit.set_object(lambda i: i < 300 and i % 20 == 0, -2.5, tex_objects[5])
     circuit.set_object(lambda i: i % 17 == 0, 2.0, tex_objects[6])
     circuit.set_object(lambda i: i > 300 and i % 20 == 0, -0.7, tex_objects[4])
@@ -52,8 +54,7 @@ def main():
     circuit.set_object(lambda i: i == 400, -1.2, tex_objects[7])
 
     id_car = 1
-    player = Player(tex_coord_t=(43 + 6)*(id_car*2),
-                    maxForwardSpeed=400*3,
+    player = Player(tex_coord_t=(43 + 6)*(id_car*2), maxForwardSpeed=400*3,
                     scale=3.0)
     player.create_sprite(screen)
 
@@ -139,7 +140,7 @@ def main():
                 player.per_loop_drift(circuit.lines[start_pos].curve)
 
             # clear the window
-            app.clear(sf.Color(105, 205, 4))
+            app.clear(sf.Color.BLACK)
 
             @profile_gpu(func_exit_condition=lambda: app.is_open)
             def _render_background():
