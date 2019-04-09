@@ -18,6 +18,32 @@ from examples.outrun.engine.utils import truncate_middle
 
 nb_lines_in_screen = 300
 
+font = sf.Font.from_file('data/sansation.ttf')
+profiling_text = defaultdict(lambda: sf.Text(font=font, character_size=20))
+
+acc_elapsed_time_in_ms = defaultdict(float)
+elapsed_time_in_ms = defaultdict(float)
+nb_elapsed_time = defaultdict(int)
+
+
+def render_profiling(screen, app):
+    for i, func_name in enumerate(timeit_gpu_results, start=1):
+        acc_elapsed_time_in_ms[func_name] += timeit_gpu_results[
+                                                 func_name] / 1000000.0
+        nb_elapsed_time[func_name] += 1
+        if not (nb_elapsed_time[func_name] % 60):
+            elapsed_time_in_ms[func_name] = acc_elapsed_time_in_ms[
+                                                func_name] / 60.0
+            nb_elapsed_time[func_name] = 0
+            acc_elapsed_time_in_ms[func_name] = 0
+            # https://stackoverflow.com/questions/5676646/how-can-i-fill-out-a-python-string-with-spaces/38505737
+        profiling_text[func_name].string = f"[gpu] {truncate_middle(func_name.ljust(15), 15)} = {elapsed_time_in_ms[func_name]:4.4} ms"
+        profiling_text[func_name].position = (
+            0,
+            screen.height - (profiling_text[func_name].font.get_line_spacing(profiling_text[func_name].character_size) * (i + 1 / 3))
+        )
+        app.draw(profiling_text[func_name])
+
 
 def main():
     screen = Screen(1024, 768)
@@ -64,13 +90,6 @@ def main():
 
     speed_text = sf.Text(string="0", font=screen.font, character_size=50)
     speed_text.position = screen.width - 250, screen.height - 80
-
-    font = sf.Font.from_file('data/sansation.ttf')
-    profiling_text = defaultdict(lambda: sf.Text(font=font, character_size=20))
-
-    acc_elapsed_time_in_ms = defaultdict(float)
-    elapsed_time_in_ms = defaultdict(float)
-    nb_elapsed_time = defaultdict(int)
 
     # start the game loop
     while app.is_open:
@@ -167,9 +186,9 @@ def main():
             _render_objects()
 
             @profile_gpu(func_exit_condition=lambda: app.is_open)
-            def _render_car():
+            def _render_car_player():
                 app.draw(player.sprite)
-            _render_car()
+            _render_car_player()
 
             # render text with car speed
             speed_text.string = "{:.0f} kmh".format(player.speed)
@@ -178,20 +197,7 @@ def main():
         _main_loop()
 
         # GPU Profiling
-        for i, func_name in enumerate(timeit_gpu_results, start=1):
-            acc_elapsed_time_in_ms[func_name] += timeit_gpu_results[func_name] / 1000000.0
-            nb_elapsed_time[func_name] += 1
-            if not(nb_elapsed_time[func_name] % 60):
-                elapsed_time_in_ms[func_name] = acc_elapsed_time_in_ms[func_name] / 60.0
-                nb_elapsed_time[func_name] = 0
-                acc_elapsed_time_in_ms[func_name] = 0
-                # https://stackoverflow.com/questions/5676646/how-can-i-fill-out-a-python-string-with-spaces/38505737
-            profiling_text[func_name].string = f"[gpu] {truncate_middle(func_name.ljust(15), 15)} = {elapsed_time_in_ms[func_name]:4.4} ms"
-            profiling_text[func_name].position = (
-                0,
-                screen.height - (profiling_text[func_name].font.get_line_spacing(profiling_text[func_name].character_size) * (i + 1/3))
-            )
-            app.draw(profiling_text[func_name])
+        render_profiling(screen, app)
 
         # finally, display the rendered frame on screen
         app.display()
