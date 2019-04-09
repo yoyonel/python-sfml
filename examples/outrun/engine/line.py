@@ -21,6 +21,7 @@ class Line:
 
     sprite_x: int = 0
     tex_object: Optional[sf.Texture] = None
+    sprite_object: Optional[sf.Sprite] = None
 
     screen: Screen = field(init=False)
     cam_depth: float = field(init=False)
@@ -42,10 +43,12 @@ class Line:
         )
 
     def draw_sprite(self, app: sf.RenderWindow, screen: Screen):
+        # if a texture (object) is associate to a line render the sprite object
         if self.tex_object:
             # new instance of Sprite
-            # TODO: really needed ?
-            sprite_object = sf.Sprite(texture=self.tex_object)
+            self.sprite_object = sf.Sprite(texture=self.tex_object)
+
+            sprite_object = self.sprite_object
 
             tex_w = sprite_object.texture_rectangle.width
             tex_h = sprite_object.texture_rectangle.height
@@ -60,8 +63,8 @@ class Line:
             dest_w = tex_w * sc_w / (266 * 1)
             dest_h = tex_h * sc_w / (266 * 1)
 
-            dest_x += dest_w * sprite_x  # offsetX
-            dest_y += dest_h * (-1)  # offsetY
+            dest_x += dest_w * sprite_x     # offsetX
+            dest_y += dest_h * (-1)         # offsetY
 
             # clippings
             #
@@ -71,9 +74,11 @@ class Line:
             # scissor
             rect = (0, 0, tex_w, tex_h - tex_h * clip_h / dest_h)
             sprite_object.texture_rectangle = rect
-
+            # scale
             scale = (dest_w / tex_w, dest_h / tex_h)
             sprite_object.scale(scale)
+            # position
             sprite_object.position = dest_x, dest_y
 
+            # render the sprite
             app.draw(sprite_object)
