@@ -14,3 +14,23 @@ Please visit the website (https://www.python-sfml.org/) for any complementary in
 You're also encouraged to visit (and contribute) to the wiki which gathers various piece of code, tutorials, tips and tricks.
 
 These bindings were created in large part by **Jonathan De Wachter**, with significant contributions from **Edwin Marshall**. Thanks a lot to **James Cowgill** who occasionally fixes broken builds and maintains Debian packages. Other contributors include **Jorge Araya Navarro** and **Richard Sims**.
+
+# Installation
+
+## Cython
+
+```
+pip install cython
+```
+
+## Python + SFML dev packages [Ubuntu]
+
+```
+apt install libpython3.7-dev libsfml-dev
+```
+
+## Build
+
+```
+python setup.py build_ext --inplace
+```
