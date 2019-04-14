@@ -26,7 +26,7 @@ elapsed_time_in_ms = defaultdict(float)
 nb_elapsed_time = defaultdict(int)
 
 
-def render_profiling(screen, app):
+def render_profiling(screen, app, color=sf.Color.WHITE):
     for i, func_name in enumerate(timeit_gpu_results, start=1):
         acc_elapsed_time_in_ms[func_name] += timeit_gpu_results[
                                                  func_name] / 1000000.0
@@ -40,8 +40,10 @@ def render_profiling(screen, app):
         profiling_text[func_name].string = f"[gpu] {truncate_middle(func_name.ljust(15), 15)} = {elapsed_time_in_ms[func_name]:4.4} ms"
         profiling_text[func_name].position = (
             0,
-            screen.height - (profiling_text[func_name].font.get_line_spacing(profiling_text[func_name].character_size) * (i + 1 / 3))
+            # screen.height - (profiling_text[func_name].font.get_line_spacing(profiling_text[func_name].character_size) * (i + 1 / 3))
+            (profiling_text[func_name].font.get_line_spacing(profiling_text[func_name].character_size) * (i-1))
         )
+        profiling_text[func_name].color = color
         app.draw(profiling_text[func_name])
 
 

@@ -23,11 +23,13 @@ uniform float tex_width;
 
 uniform vec4 pixel_average;
 
+float invTextureSize = 1.0 / tex_width;
+
 vec4 sample_sat(sampler2D t, vec2 UL, float size_filter)
 {
-    vec2 UR = UL + vec2(size_filter, 0.0) / tex_width;
-    vec2 LR = UL + vec2(size_filter, size_filter) / tex_width;
-    vec2 LL = UL + vec2(0.0, size_filter) / tex_width;
+    vec2 UR = UL + vec2(size_filter, 0.0) * invTextureSize;
+    vec2 LR = UL + vec2(size_filter, size_filter) * invTextureSize;
+    vec2 LL = UL + vec2(0.0, size_filter) * invTextureSize;
 
     vec3 avg = (
         (texture2D(t, UL).rgb + texture2D(t, LR).rgb) -
@@ -60,9 +62,18 @@ vec2 project_sample_mode7(vec2 pos)
     return vec2(fSampleX, fSampleY);
 }
 
+// https://github.com/hughsk/glsl-fog
+// https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glFog.xml
+float fogFactorExp2(const float dist, const float density)
+{
+    const float LOG2 = -1.442695;
+    float d = density * dist;
+    return 1.0 - clamp(exp2(d * d * LOG2), 0.0, 1.0);
+}
+
 vec4 mode7_with_sat()
 {
-    vec2 pos = gl_TexCoord[0].xy - vec2(0.5, 0.5) / tex_width;
+    vec2 pos = gl_TexCoord[0].xy - vec2(0.5, 0.5) * invTextureSize;
 
     vec2 proj_pos = project_sample_mode7(pos);
 
@@ -71,6 +82,12 @@ vec4 mode7_with_sat()
     vec4 tex_sampling = sample_sat(tex_sat, proj_pos, size_filter);
 
     vec4 result = tex_sampling;
+
+    //fading
+    float depth = 1.0 - pos.y;
+    float fogAmount = fogFactorExp2(depth, 0.582);
+    const vec4 fogColor = vec4(1.0);
+    result = mix(result, fogColor, fogAmount);
 
     return result;
 }

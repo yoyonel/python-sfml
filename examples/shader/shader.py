@@ -1,27 +1,61 @@
-"""
-"""
 import logging
-from math import cos, sin
-import numpy as np
-from OpenGL.GL import *
 from pathlib import Path
+from typing import Tuple
+
+import numpy as np
+from OpenGL.GL import (
+    glGenTextures, glBindTexture, GL_TEXTURE_2D, glTexImage2D,
+    GL_RGBA32F, GL_RGBA, GL_FLOAT,
+    glEnable)
+from math import cos, sin
 from random import randint
 from sfml import sf
 from tifffile import tifffile
-from typing import Tuple
 
 from examples.outrun.engine.game import render_profiling
 from examples.outrun.engine.profiling import profile_gpu
 
-# video_mode = sf.VideoMode(1024, 768)
-# https://fr.wikipedia.org/wiki/Super_Nintendo
-video_mode = sf.VideoMode(512, 448)
-clock = sf.Clock()
-
 logger = logging.getLogger(__name__)
 
 
+def generate_sat(fn_img: str) -> Tuple[Path, np.array]:
+    # http://developer.amd.com/wordpress/media/2012/10/GDC2005_SATEnvironmentReflections.pdf
+    # https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch39.html
+    # "Fast Summed-Area Table Generation and its Applications"
+    # http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.90.8836&rep=rep1&type=pdf
+
+    image = sf.Image.from_file(fn_img)
+    logger.info(
+        f"Generate Summed Area Table from: '{fn_img}' ({image.width}, "
+        f"{image.height}) ...")
+    nparray_image = np.array(
+        np.ndarray(
+            (image.width, image.height, 4),
+            buffer=image.pixels,
+            dtype=np.uint8
+        )
+    )
+    normed_image = nparray_image / 255.0
+    pixel_average = np.average(normed_image, axis=(0, 1))
+    normed_image = np.add(normed_image, pixel_average * -1.0)
+    sat = normed_image.cumsum(axis=0).cumsum(axis=1)
+
+    assert all(np.isclose(
+        (sat[512][512] + sat[511][511]) - (sat[511][512] + sat[512][511]),
+        normed_image[512][512]))
+
+    # https://stackoverflow.com/questions/52490653/saving-float-numpy-images
+    path_img = Path(fn_img)
+    path_sat = path_img.with_name(path_img.stem + '.sat.tif')
+    logger.info(f"export SAT: {path_sat}")
+    tifffile.imsave(str(path_sat), sat)
+
+    return path_sat, pixel_average
+
+
 class Effect(sf.Drawable):
+    video_mode = sf.VideoMode(800, 600)
+
     def __init__(self, name):
         sf.Drawable.__init__(self)
 
@@ -66,7 +100,7 @@ class Pixelate(Effect):
             self.shader.set_parameter("texture")
 
         except IOError as error:
-            logger.error("An error occured: {0}".format(error))
+            print("An error occured: {0}".format(error))
             exit(1)
 
         return True
@@ -96,7 +130,7 @@ class WaveBlur(Effect):
                                               "data/blur.frag")
 
         except IOError as error:
-            logger.error("An error occured: {0}".format(error))
+            print("An error occured: {0}".format(error))
             exit(1)
 
         return True
@@ -135,7 +169,7 @@ class StormBlink(Effect):
                                               "data/blink.frag")
 
         except IOError as error:
-            logger.error("An error occured: {0}".format(error))
+            print("An error occured: {0}".format(error))
             exit(1)
 
         return True
@@ -233,7 +267,7 @@ class Mode7(Effect):
         self.fNearX2 = 0.0
         self.fNearY2 = 0.0
 
-        self.last_time = clock.elapsed_time.seconds
+        self.last_time = 0.0
 
     def on_load(self):
         try:
@@ -252,9 +286,11 @@ class Mode7(Effect):
             self.texture.smooth = False
 
             self.sprite = sf.Sprite(self.texture)
-            self.sprite.position = (0, (video_mode.height // 2))
-            self.sprite.scale((video_mode.width / self.texture.width,
-                               (video_mode.height // 2) / self.texture.height))
+            self.sprite.position = (0, (self.video_mode.height // 2))
+            self.sprite.scale(
+                (self.video_mode.width / self.texture.width,
+                 (self.video_mode.height // 2) / self.texture.height)
+            )
 
             # load the shader
             self.shader = sf.Shader.from_file(
@@ -341,32 +377,10 @@ class Mode7(Effect):
         target.draw(self.sprite, states)
 
 
-class Mode7WithSAT(Effect):
-    """
-    https://en.wikipedia.org/wiki/Mode_7
-    https://www.coranac.com/tonc/text/mode7.htm
-    """
-
+class Mode7WithSAT(Mode7):
     def __init__(self):
-        Effect.__init__(self, 'Mode 7 with SAT')
-
-        self.fWorldX = 0.0
-        self.fWorldY = 0.0
-        self.fWorldA = 0.1
-        self.fNear = 0.005
-        self.fFar = 0.03
-        self.fFoVHalf = 3.14159 / 4.0
-
-        self.fFarX1 = 0.0
-        self.fFarY1 = 0.0
-        self.fFarX2 = 0.0
-        self.fFarY2 = 0.0
-        self.fNearX1 = 0.0
-        self.fNearY1 = 0.0
-        self.fNearX2 = 0.0
-        self.fNearY2 = 0.0
-
-        self.last_time = clock.elapsed_time.seconds
+        Mode7.__init__(self)
+        self._name = 'Mode 7 with Summed Area Table'
 
     def on_load(self):
         try:
@@ -378,7 +392,7 @@ class Mode7WithSAT(Effect):
                 "data/vanillalake-1.png",
                 "data/bowsercastle-1.png"
             ]
-            fn_img = list_fn_img[2]
+            fn_img = list_fn_img[3]
 
             # SAT
             path_sat, pixel_average = generate_sat(fn_img)
@@ -387,9 +401,11 @@ class Mode7WithSAT(Effect):
             self.texture.smooth = True
 
             self.sprite = sf.Sprite(self.texture)
-            self.sprite.position = (0, (video_mode.height // 2))
-            self.sprite.scale((video_mode.width / self.texture.width,
-                               (video_mode.height // 2) / self.texture.height))
+            self.sprite.position = (0, (self.video_mode.height // 2))
+            self.sprite.scale(
+                (self.video_mode.width / self.texture.width,
+                 (self.video_mode.height // 2) / self.texture.height)
+            )
 
             # load the shader
             self.shader = sf.Shader.from_file(
@@ -400,7 +416,9 @@ class Mode7WithSAT(Effect):
             self.shader.set_parameter("tex_width", self.texture.width)
             self.shader.set_4float_parameter("pixel_average", *pixel_average)
 
+            logger.info("Load SAT ...")
             sat = tifffile.imread(str(path_sat))
+            logger.info("Generate Float Texture RGBA32F ...")
             self.sat_tex_id = 1
             glGenTextures(1, self.sat_tex_id)
             glBindTexture(GL_TEXTURE_2D, self.sat_tex_id)
@@ -414,239 +432,154 @@ class Mode7WithSAT(Effect):
 
         return True
 
-    def on_update(self, time, x, y):
-        ellapsed_time = time - self.last_time
-        self.shader.set_parameter("time", time)
-
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.Q):
-            self.fNear += 0.1 * ellapsed_time
-            logger.debug(f"+fNear={self.fNear}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.A):
-            self.fNear -= 0.1 * ellapsed_time
-            logger.debug(f"-fNear={self.fNear}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.W):
-            self.fFar += 0.1 * ellapsed_time
-            logger.debug(f"+fFar={self.fFar}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.S):
-            self.fFar -= 0.1 * ellapsed_time
-            logger.debug(f"-fFar={self.fFar}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.Z):
-            self.fFoVHalf += 0.1 * ellapsed_time
-            logger.debug(f"+fFoVHalf={self.fFoVHalf}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.X):
-            self.fFoVHalf -= 0.1 * ellapsed_time
-            logger.debug(f"-fFoVHalf={self.fFoVHalf}")
-
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.RIGHT):
-            self.fWorldA += 1.0 * ellapsed_time
-            logger.debug(f"+fWorldA={self.fWorldA}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.LEFT):
-            self.fWorldA -= 1.0 * ellapsed_time
-            logger.debug(f"-fWorldA={self.fWorldA}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.UP):
-            self.fWorldX += cos(self.fWorldA) * 0.2 * ellapsed_time
-            self.fWorldY += sin(self.fWorldA) * 0.2 * ellapsed_time
-            logger.debug(f"+fWorldXY=({self.fWorldX},{self.fWorldY})")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.DOWN):
-            self.fWorldX -= cos(self.fWorldA) * 0.2 * ellapsed_time
-            self.fWorldY -= sin(self.fWorldA) * 0.2 * ellapsed_time
-            logger.debug(f"-fWorldXY=({self.fWorldX},{self.fWorldY})")
-
-        # TODO: can be done in Vertex Shader [gpu side] with matrix
-        # Create Frustum corner points
-        fFarX1 = self.fWorldX + cos(
-            self.fWorldA - self.fFoVHalf) * self.fFar
-        fFarY1 = self.fWorldY + sin(
-            self.fWorldA - self.fFoVHalf) * self.fFar
-        fNearX1 = self.fWorldX + cos(
-            self.fWorldA - self.fFoVHalf) * self.fNear
-        fNearY1 = self.fWorldY + sin(
-            self.fWorldA - self.fFoVHalf) * self.fNear
-        fFarX2 = self.fWorldX + cos(
-            self.fWorldA + self.fFoVHalf) * self.fFar
-        fFarY2 = self.fWorldY + sin(
-            self.fWorldA + self.fFoVHalf) * self.fFar
-        fNearX2 = self.fWorldX + cos(
-            self.fWorldA + self.fFoVHalf) * self.fNear
-        fNearY2 = self.fWorldY + sin(
-            self.fWorldA + self.fFoVHalf) * self.fNear
-
-        self.shader.set_parameter("fFarX1", fFarX1)
-        self.shader.set_parameter("fFarY1", fFarY1)
-        self.shader.set_parameter("fNearX1", fNearX1)
-        self.shader.set_parameter("fNearY1", fNearY1)
-        self.shader.set_parameter("fFarX2", fFarX2)
-        self.shader.set_parameter("fFarY2", fFarY2)
-        self.shader.set_parameter("fNearX2", fNearX2)
-        self.shader.set_parameter("fNearY2", fNearY2)
-
-        self.last_time = time
-
     def on_draw(self, target, states):
         states.shader = self.shader
         # TODO: use OpenGL primitives directly instead of using sf::Sprite
-        # glEnable(GL_TEXTURE_2D)
-        # glBindTexture(GL_TEXTURE_2D, self.sat_tex_id)
+        glEnable(GL_TEXTURE_2D)
+        glBindTexture(GL_TEXTURE_2D, self.sat_tex_id)
         target.draw(self.sprite, states)
 
 
-def generate_sat(fn_img: str) -> Tuple[Path, np.array]:
-    # http://developer.amd.com/wordpress/media/2012/10/GDC2005_SATEnvironmentReflections.pdf
-    # https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch39.html
-    # "Fast Summed-Area Table Generation and its Applications"
-    # http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.90.8836&rep=rep1&type=pdf
+class MainApp(object):
+    def __init__(self):
+        # https://fr.wikipedia.org/wiki/Super_Nintendo
+        Effect.video_mode = sf.VideoMode(512, 448)
+        self.video_mode = Effect.video_mode
 
-    image = sf.Image.from_file(fn_img)
-    logger.info(
-        f"Generate Summed Area Table from: '{fn_img}' ({image.width}, "
-        f"{image.height}) ...")
-    nparray_image = np.array(
-        np.ndarray(
-            (image.width, image.height, 4),
-            buffer=image.pixels,
-            dtype=np.uint8
+        # create the main window
+        self.window = sf.RenderWindow(self.video_mode, "pySFML - Shader")
+        self.window.vertical_synchronization = True
+
+        #
+        self.clock = sf.Clock()
+
+        # create the effects
+        self.effects = (
+            # Mode7(),
+            Mode7WithSAT(),
+            Pixelate(), WaveBlur(), StormBlink(), Edge())
+        self.current = 0
+
+        # initialize them
+        for effect in self.effects:
+            effect.load()
+
+        # create the message background
+        try:
+            self.text_background_texture = \
+                sf.Texture.from_file(
+                    "data/text-background.png")
+
+        except IOError as error:
+            raise RuntimeError("An error occured: {0}".format(error))
+
+        self.text_background = sf.Sprite(self.text_background_texture)
+        self.text_background.position = (0, 520)
+        self.text_background.color = sf.Color(255, 255, 255, 64)
+
+        # load the messages font
+        try:
+            self.font = sf.Font.from_file("data/sansation.ttf")
+        except IOError as error:
+            raise RuntimeError("An error occured: {0}".format(error))
+
+        # create the description text
+        self.description = sf.Text(
+            "Current effect: {0}".format(self.effects[self.current].name),
+            self.font, 20
         )
-    )
-    normed_image = nparray_image / 255.0
-    pixel_average = np.average(normed_image, axis=(0, 1))
-    normed_image = np.add(normed_image, pixel_average * -1.0)
-    sat = normed_image.cumsum(axis=0).cumsum(axis=1)
+        self.description.position = (10, 530)
+        self.description.color = sf.Color(80, 80, 80)
 
-    assert all(np.isclose(
-        (sat[512][512] + sat[511][511]) - (sat[511][512] + sat[512][511]),
-        normed_image[512][512]))
+        # create the instructions text
+        self.instructions = sf.Text(
+            "Press left and right arrows to change the current shader",
+            self.font, 20)
+        self.instructions.position = (280, 555)
+        self.instructions.color = sf.Color(80, 80, 80)
 
-    # https://stackoverflow.com/questions/52490653/saving-float-numpy-images
-    path_img = Path(fn_img)
-    path_sat = path_img.with_name(path_img.stem + '.sat.tif')
-    logger.info(f"export SAT: {path_sat}")
-    tifffile.imsave(str(path_sat), sat)
+    def process_events(self):
+        for event in self.window.events:
+            # close window: exit
+            if event == sf.Event.CLOSED:
+                self.window.close()
 
-    return path_sat, pixel_average
+            if event == sf.Event.KEY_PRESSED:
+                # escapte key: exit
+                if event['code'] == sf.Keyboard.ESCAPE:
+                    self.window.close()
+
+                # left arrow key: previous shader
+                elif event['code'] == sf.Keyboard.PAGE_DOWN:
+                    self.current = (self.current - 1) % len(self.effects)
+
+                    self.description.string = "Current effect: {0}".format(
+                        self.effects[self.current].name)
+
+                # right arrow key: next shader
+                elif event['code'] == sf.Keyboard.PAGE_UP:
+                    self.current = (self.current + 1) % len(self.effects)
+
+                    self.description.string = "Current effect: {0}".format(
+                        self.effects[self.current].name)
+
+    def update_effect(self):
+        mouse_position = sf.Mouse.get_position(self.window)
+        x = mouse_position.x / self.window.size.x
+        y = mouse_position.y / self.window.size.y
+        self.effects[self.current].update(self.clock.elapsed_time.seconds, x, y)
+
+    def draw_texts(self):
+        self.window.draw(self.text_background)
+        self.window.draw(self.instructions)
+        self.window.draw(self.description)
+
+    def run(self):
+        def _func_exit_condition():
+            return self.window.is_open
+
+        # start the game loop
+        while self.window.is_open:
+            @profile_gpu(_func_exit_condition)
+            def loop():
+                # update the current example
+                self.update_effect()
+
+                # process events
+                self.process_events()
+
+                # clear the window
+                self.window.clear(sf.Color(0, 137, 196))
+
+                # draw the current example
+                @profile_gpu(_func_exit_condition)
+                def _render_effect():
+                    self.window.draw(self.effects[self.current])
+
+                _render_effect()
+
+                # draw the text
+                self.draw_texts()
+
+            loop()
+
+            # GPU Profiling
+            render_profiling(self.video_mode, self.window,
+                             color=sf.Color(0, 255, 0, 128))
+
+            # finally, display the rendered frame on screen
+            self.window.display()
 
 
 def main():
-    # create the main window
-    context_settings = sf.ContextSettings()
-    context_settings.antialiasing_level = 1
-    window = sf.RenderWindow(
-        video_mode,
-        "pySFML - Mode 7 (SNES)",
-        sf.Style.DEFAULT, context_settings
+    logging.basicConfig(
+        level=logging.INFO,
+        # format='[%(relativeCreated)6d ms] %(threadName)s %(message)s'
+        format='%(asctime)s %(threadName)s %(message)s'
     )
-    window.vertical_synchronization = True
-
-    # create the effects
-    # effects = (Pixelate(), WaveBlur(), StormBlink(), Edge())
-    # TODO: don't work with the two effects in the same time ...
-    # problem with setting shader texture
-    effects = (
-        # Mode7(),
-        Mode7WithSAT(),
-    )
-    current = 0
-
-    # initialize them
-    for effect in effects:
-        effect.load()
-
-    # create the message background
-    try:
-        text_background_texture = sf.Texture.from_file(
-            "data/text-background.png")
-    except IOError as error:
-        raise RuntimeError("An error occured: {0}".format(error))
-
-    text_background = sf.Sprite(text_background_texture)
-    text_background.position = (0, 520)
-    text_background.color = sf.Color(255, 255, 255, 200)
-
-    # load the messages font
-    try:
-        font = sf.Font.from_file("data/sansation.ttf")
-    except IOError as error:
-        raise RuntimeError("An error occured: {0}".format(error))
-
-    # create the description text
-    description = sf.Text("Current effect: {0}".format(effects[current].name),
-                          font, 20)
-    description.position = (10, 530)
-    description.color = sf.Color(80, 80, 80)
-
-    # create the instructions text
-    instructions = sf.Text(
-        "Press left and right arrows to change the current shader", font, 20)
-    instructions.position = (280, 555)
-    instructions.color = sf.Color(80, 80, 80)
-
-    # start the game loop
-    while window.is_open:
-        @profile_gpu(func_exit_condition=lambda: window.is_open)
-        def _render_loop(current: int):
-            # update the current example
-            x = sf.Mouse.get_position(window).x / window.size.x
-            y = sf.Mouse.get_position(window).y / window.size.y
-            effects[current].update(clock.elapsed_time.seconds, x, y)
-
-            # process events
-            for event in window.events:
-
-                # close window: exit
-                if event == sf.Event.CLOSED:
-                    window.close()
-
-                if event == sf.Event.KEY_PRESSED:
-                    # escapte key: exit
-                    if event['code'] == sf.Keyboard.ESCAPE:
-                        window.close()
-
-                    # left arrow key: previous shader
-                    elif event['code'] == sf.Keyboard.PAGE_DOWN:
-                        if current == 0:
-                            current = len(effects) - 1
-                        else:
-                            current -= 1
-
-                        description.string = "Current effect: {0}".format(
-                            effects[current].name)
-
-                    # right arrow key: next shader
-                    elif event['code'] == sf.Keyboard.PAGE_UP:
-                        if current == len(effects) - 1:
-                            current = 0
-                        else:
-                            current += 1
-
-                        description.string = "Current effect: {0}".format(
-                            effects[current].name)
-
-            # clear the window
-            window.clear(sf.Color(0, 137, 196))
-
-            # draw the current example
-            @profile_gpu(func_exit_condition=lambda: window.is_open)
-            def _render_effect(e):
-                window.draw(e)
-
-            _render_effect(effects[current])
-
-            # draw the text
-            # window.draw(text_background)
-            # window.draw(instructions)
-            window.draw(description)
-
-        _render_loop(current)
-
-        # GPU Profiling
-        render_profiling(video_mode, window)
-
-        # finally, display the rendered frame on screen
-        window.display()
+    app = MainApp()
+    app.run()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(relativeCreated)6d %(threadName)s %(message)s'
-    )
     main()
