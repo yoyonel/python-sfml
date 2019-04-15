@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Tuple
 
@@ -85,6 +86,39 @@ class Effect(sf.Drawable):
     name = property(_get_name)
 
 
+@dataclass
+class RatioVideoMode:
+    origin: sf.VideoMode
+    target: sf.VideoMode
+
+    ratio: sf.Vector2 = field(init=False)
+
+    def __post_init__(self):
+        self.ratio = sf.Vector2(
+            self.target.width / self.origin.width,
+            self.target.height / self.origin.height
+        )
+
+    def convert_coord(self, x: float, y: float) -> Tuple[float, float]:
+        return (
+            x * self.ratio.x,
+            y * self.ratio.y
+        )
+
+    def convert_x_coord(self, x: float) -> float:
+        return x * self.ratio.x
+
+    def convert_y_coord(self, y: float) -> float:
+        return y * self.ratio.y
+
+
+# Effect.video_mode = sf.VideoMode(800, 600)
+# https://fr.wikipedia.org/wiki/Super_Nintendo
+Effect.video_mode = sf.VideoMode(512 * 2, 448 * 2)
+#
+ratio = RatioVideoMode(sf.VideoMode(800, 600), Effect.video_mode)
+
+
 class Pixelate(Effect):
     def __init__(self):
         Effect.__init__(self, 'pixelate')
@@ -94,6 +128,7 @@ class Pixelate(Effect):
             # load the texture and initialize the sprite
             self.texture = sf.Texture.from_file("data/background.jpg")
             self.sprite = sf.Sprite(self.texture)
+            self.sprite.scale(ratio.convert_coord(1, 1))
 
             # load the shader
             self.shader = sf.Shader.from_file(fragment="data/pixelate.frag")
@@ -121,8 +156,8 @@ class WaveBlur(Effect):
         with open("data/text.txt") as file:
             self.text = sf.Text(file.read())
             self.text.font = sf.Font.from_file("data/sansation.ttf")
-            self.text.character_size = 22
-            self.text.position = (30, 20)
+            self.text.character_size = ratio.convert_x_coord(22)
+            self.text.position = ratio.convert_coord(30, 20)
 
         try:
             # load the shader
@@ -156,8 +191,8 @@ class StormBlink(Effect):
         self.points.primitive_type = sf.PrimitiveType.POINTS
 
         for i in range(40000):
-            x = randint(0, 32767) % 800
-            y = randint(0, 32767) % 600
+            x = randint(0, 32767) % int(ratio.convert_x_coord(800))
+            y = randint(0, 32767) % int(ratio.convert_y_coord(600))
             r = randint(0, 32767) % 255
             g = randint(0, 32767) % 255
             b = randint(0, 32767) % 255
@@ -175,8 +210,10 @@ class StormBlink(Effect):
         return True
 
     def on_update(self, time, x, y):
-        radius = 200 + cos(time) * 150
-        self.shader.set_parameter("storm_position", x * 800, y * 600)
+        radius = ratio.convert_x_coord(200) + cos(time) * ratio.convert_x_coord(150)
+        self.shader.set_parameter("storm_position",
+                                  x * ratio.convert_x_coord(800),
+                                  y * ratio.convert_y_coord(600))
         self.shader.set_parameter("storm_inner_radius", radius / 3)
         self.shader.set_parameter("storm_total_radius", radius)
         self.shader.set_parameter("blink_alpha", 0.5 + cos(time * 3) * 0.25)
@@ -192,7 +229,7 @@ class Edge(Effect):
 
     def on_load(self):
         # create the off-screen surface
-        self.surface = sf.RenderTexture(800, 600)
+        self.surface = sf.RenderTexture(*ratio.convert_coord(800, 600))
         self.surface.smooth = True
 
         # load the textures
@@ -204,13 +241,14 @@ class Edge(Effect):
 
         # initialize the background sprite
         self.background_sprite = sf.Sprite(self.background_texture)
-        self.background_sprite.position = (135, 100)
+        self.background_sprite.position = ratio.convert_coord(135, 100)
 
         # load the moving entities
         self.entities = []
 
         for i in range(6):
-            sprite = sf.Sprite(self.entity_texture, (96 * i, 0, 96, 96))
+            sprite = sf.Sprite(self.entity_texture,
+                               (96 * i, 0, 96, 96))
             self.entities.append(sprite)
 
         # load the shader
@@ -226,7 +264,7 @@ class Edge(Effect):
         for i, entity in enumerate(self.entities):
             x = cos(0.25 * (time * i + (len(self.entities) - i))) * 300 + 350
             y = cos(0.25 * (time * (len(self.entities) - i) + i)) * 200 + 250
-            entity.position = (x, y)
+            entity.position = ratio.convert_coord(x, y)
 
         # render the updated scene to the off-screen surface
         self.surface.clear(sf.Color.WHITE)
@@ -442,13 +480,11 @@ class Mode7WithSAT(Mode7):
 
 class MainApp(object):
     def __init__(self):
-        # https://fr.wikipedia.org/wiki/Super_Nintendo
-        Effect.video_mode = sf.VideoMode(512, 448)
         self.video_mode = Effect.video_mode
 
         # create the main window
         self.window = sf.RenderWindow(self.video_mode, "pySFML - Shader")
-        self.window.vertical_synchronization = True
+        self.window.vertical_synchronization = False
 
         #
         self.clock = sf.Clock()
@@ -474,7 +510,8 @@ class MainApp(object):
             raise RuntimeError("An error occured: {0}".format(error))
 
         self.text_background = sf.Sprite(self.text_background_texture)
-        self.text_background.position = (0, 520)
+        self.text_background.position = ratio.convert_coord(0, 520)
+        self.text_background.scale(ratio.convert_coord(1, 1))
         self.text_background.color = sf.Color(255, 255, 255, 64)
 
         # load the messages font
@@ -488,14 +525,14 @@ class MainApp(object):
             "Current effect: {0}".format(self.effects[self.current].name),
             self.font, 20
         )
-        self.description.position = (10, 530)
+        self.description.position = ratio.convert_coord(10, 530)
         self.description.color = sf.Color(80, 80, 80)
 
         # create the instructions text
         self.instructions = sf.Text(
             "Press left and right arrows to change the current shader",
             self.font, 20)
-        self.instructions.position = (280, 555)
+        self.instructions.position = ratio.convert_coord(280, 555)
         self.instructions.color = sf.Color(80, 80, 80)
 
     def process_events(self):
