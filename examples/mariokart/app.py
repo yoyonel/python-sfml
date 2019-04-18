@@ -14,8 +14,13 @@ TODO:
 - GPGPU - Ray-casting + Point Sprites Rendering
 - separate update and draw for road
 """
+import logging
 
 from examples.mariokart.engine.game import main
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(threadName)s %(message)s'
+    )
     main()
