@@ -1,7 +1,11 @@
 import sys, os, platform
 import os.path, shutil
+from collections import defaultdict
 from glob import glob
+from pathlib import Path
 from subprocess import call
+from typing import List, Dict
+
 from setuptools import setup, Command, Extension
 
 try:
@@ -130,12 +134,25 @@ with open('README.md', 'r') as f:
 
 ext_modules=[system, window, graphics, audio, network]
 
-install_requires = [
-    'PyOpenGL>=3.1.0'
-]
+
+def build_dict_requirements(
+        req_dir: Path = Path('requirements'),
+        pattern_req_file: str = '*.pip',
+) -> Dict[str, List[Path]]:
+    return defaultdict(
+        list,
+        {
+            p.stem: p.read_text().splitlines()
+            for p in req_dir.glob(pattern_req_file)
+        }
+    )
+
+
+reqs = build_dict_requirements()
+
 
 if sys.version_info < (3, 4):
-    install_requires.append('enum34')
+    reqs['base'].append('enum34')
 
 kwargs = dict(
             name='pySFML',
@@ -163,7 +180,15 @@ kwargs = dict(
                         'Topic :: Multimedia',
                         'Topic :: Software Development :: Libraries :: Python Modules'],
             keywords='sfml SFML simple fast multimedia system window graphics audio network pySFML PySFML python-sfml',
-            install_requires=install_requires,
+            install_requires=reqs['base'],
+            setup_requires=reqs['setup'],
+            extras_require={
+                'tests': reqs['test'],
+                'develop': reqs['test'] + reqs['dev'],
+                'setup': reqs['test'] + reqs['dev'] + reqs['setup']
+            },
+            test_suite='tests',
+            tests_require=reqs['test'],
             cmdclass={'build_ext': CythonBuildExt})
 
 setup(**kwargs)
