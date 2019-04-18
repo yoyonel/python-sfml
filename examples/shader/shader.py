@@ -1,57 +1,15 @@
 import logging
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Tuple
 
-import numpy as np
-from OpenGL.GL import (
-    glGenTextures, glBindTexture, GL_TEXTURE_2D, glTexImage2D,
-    GL_RGBA32F, GL_RGBA, GL_FLOAT,
-    glEnable)
-from math import cos, sin
+from math import cos
 from random import randint
 from sfml import sf
-from tifffile import tifffile
 
 from examples.outrun.engine.game import render_profiling
 from examples.outrun.engine.profiling import profile_gpu
 
 logger = logging.getLogger(__name__)
-
-
-def generate_sat(fn_img: str) -> Tuple[Path, np.array]:
-    # http://developer.amd.com/wordpress/media/2012/10/GDC2005_SATEnvironmentReflections.pdf
-    # https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch39.html
-    # "Fast Summed-Area Table Generation and its Applications"
-    # http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.90.8836&rep=rep1&type=pdf
-
-    image = sf.Image.from_file(fn_img)
-    logger.info(
-        f"Generate Summed Area Table from: '{fn_img}' ({image.width}, "
-        f"{image.height}) ...")
-    nparray_image = np.array(
-        np.ndarray(
-            (image.width, image.height, 4),
-            buffer=image.pixels,
-            dtype=np.uint8
-        )
-    )
-    normed_image = nparray_image / 255.0
-    pixel_average = np.average(normed_image, axis=(0, 1))
-    normed_image = np.add(normed_image, pixel_average * -1.0)
-    sat = normed_image.cumsum(axis=0).cumsum(axis=1)
-
-    assert all(np.isclose(
-        (sat[512][512] + sat[511][511]) - (sat[511][512] + sat[512][511]),
-        normed_image[512][512]))
-
-    # https://stackoverflow.com/questions/52490653/saving-float-numpy-images
-    path_img = Path(fn_img)
-    path_sat = path_img.with_name(path_img.stem + '.sat.tif')
-    logger.info(f"export SAT: {path_sat}")
-    tifffile.imsave(str(path_sat), sat)
-
-    return path_sat, pixel_average
 
 
 class Effect(sf.Drawable):
@@ -112,9 +70,7 @@ class RatioVideoMode:
         return y * self.ratio.y
 
 
-# Effect.video_mode = sf.VideoMode(800, 600)
-# https://fr.wikipedia.org/wiki/Super_Nintendo
-Effect.video_mode = sf.VideoMode(512 * 2, 448 * 2)
+Effect.video_mode = sf.VideoMode(800, 600)
 #
 ratio = RatioVideoMode(sf.VideoMode(800, 600), Effect.video_mode)
 
@@ -280,204 +236,6 @@ class Edge(Effect):
         target.draw(sf.Sprite(self.surface.texture), states)
 
 
-class Mode7(Effect):
-    """
-    https://en.wikipedia.org/wiki/Mode_7
-    https://www.coranac.com/tonc/text/mode7.htm
-    """
-
-    def __init__(self):
-        Effect.__init__(self, 'Mode 7')
-
-        self.fWorldX = 0.0
-        self.fWorldY = 0.0
-        self.fWorldA = 0.1
-        self.fNear = 0.005
-        self.fFar = 0.03
-        self.fFoVHalf = 3.14159 / 4.0
-
-        self.fFarX1 = 0.0
-        self.fFarY1 = 0.0
-        self.fFarX2 = 0.0
-        self.fFarY2 = 0.0
-        self.fNearX1 = 0.0
-        self.fNearY1 = 0.0
-        self.fNearX2 = 0.0
-        self.fNearY2 = 0.0
-
-        self.last_time = 0.0
-
-    def on_load(self):
-        try:
-            list_fn_img = [
-                "data/81343.png",
-                "data/84993_track.png",
-                "data/battlecourse-1.png",
-                "data/mariocircuit-2.png",
-                "data/vanillalake-1.png",
-                "data/bowsercastle-1.png"
-            ]
-            fn_img = list_fn_img[2]
-
-            # load the texture and initialize the sprite
-            self.texture = sf.Texture.from_file(fn_img)
-            self.texture.smooth = False
-
-            self.sprite = sf.Sprite(self.texture)
-            self.sprite.position = (0, (self.video_mode.height // 2))
-            self.sprite.scale(
-                (self.video_mode.width / self.texture.width,
-                 (self.video_mode.height // 2) / self.texture.height)
-            )
-
-            # load the shader
-            self.shader = sf.Shader.from_file(
-                vertex="data/mode7.vert",
-                fragment="data/mode7.frag"
-            )
-            self.shader.set_parameter("texture")
-        except IOError as error:
-            logger.error("An error occured: {0}".format(error))
-            exit(1)
-
-        return True
-
-    def on_update(self, time, x, y):
-        ellapsed_time = time - self.last_time
-        self.shader.set_parameter("time", time)
-
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.Q):
-            self.fNear += 0.1 * ellapsed_time
-            logger.debug(f"+fNear={self.fNear}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.A):
-            self.fNear -= 0.1 * ellapsed_time
-            logger.debug(f"-fNear={self.fNear}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.W):
-            self.fFar += 0.1 * ellapsed_time
-            logger.debug(f"+fFar={self.fFar}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.S):
-            self.fFar -= 0.1 * ellapsed_time
-            logger.debug(f"-fFar={self.fFar}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.Z):
-            self.fFoVHalf += 0.1 * ellapsed_time
-            logger.debug(f"+fFoVHalf={self.fFoVHalf}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.X):
-            self.fFoVHalf -= 0.1 * ellapsed_time
-            logger.debug(f"-fFoVHalf={self.fFoVHalf}")
-
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.RIGHT):
-            self.fWorldA += 1.0 * ellapsed_time
-            logger.debug(f"+fWorldA={self.fWorldA}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.LEFT):
-            self.fWorldA -= 1.0 * ellapsed_time
-            logger.debug(f"-fWorldA={self.fWorldA}")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.UP):
-            self.fWorldX += cos(self.fWorldA) * 0.2 * ellapsed_time
-            self.fWorldY += sin(self.fWorldA) * 0.2 * ellapsed_time
-            logger.debug(f"+fWorldXY=({self.fWorldX},{self.fWorldY})")
-        if sf.Keyboard.is_key_pressed(sf.Keyboard.DOWN):
-            self.fWorldX -= cos(self.fWorldA) * 0.2 * ellapsed_time
-            self.fWorldY -= sin(self.fWorldA) * 0.2 * ellapsed_time
-            logger.debug(f"-fWorldXY=({self.fWorldX},{self.fWorldY})")
-
-        # TODO: can be done in Vertex Shader [gpu side] with matrix
-        # Create Frustum corner points
-        fFarX1 = self.fWorldX + cos(
-            self.fWorldA - self.fFoVHalf) * self.fFar
-        fFarY1 = self.fWorldY + sin(
-            self.fWorldA - self.fFoVHalf) * self.fFar
-        fNearX1 = self.fWorldX + cos(
-            self.fWorldA - self.fFoVHalf) * self.fNear
-        fNearY1 = self.fWorldY + sin(
-            self.fWorldA - self.fFoVHalf) * self.fNear
-        fFarX2 = self.fWorldX + cos(
-            self.fWorldA + self.fFoVHalf) * self.fFar
-        fFarY2 = self.fWorldY + sin(
-            self.fWorldA + self.fFoVHalf) * self.fFar
-        fNearX2 = self.fWorldX + cos(
-            self.fWorldA + self.fFoVHalf) * self.fNear
-        fNearY2 = self.fWorldY + sin(
-            self.fWorldA + self.fFoVHalf) * self.fNear
-
-        self.shader.set_parameter("fFarX1", fFarX1)
-        self.shader.set_parameter("fFarY1", fFarY1)
-        self.shader.set_parameter("fNearX1", fNearX1)
-        self.shader.set_parameter("fNearY1", fNearY1)
-        self.shader.set_parameter("fFarX2", fFarX2)
-        self.shader.set_parameter("fFarY2", fFarY2)
-        self.shader.set_parameter("fNearX2", fNearX2)
-        self.shader.set_parameter("fNearY2", fNearY2)
-
-        self.last_time = time
-
-    def on_draw(self, target, states):
-        states.shader = self.shader
-        target.draw(self.sprite, states)
-
-
-class Mode7WithSAT(Mode7):
-    def __init__(self):
-        Mode7.__init__(self)
-        self._name = 'Mode 7 with Summed Area Table'
-
-    def on_load(self):
-        try:
-            list_fn_img = [
-                "data/81343.png",
-                "data/84993_track.png",
-                "data/battlecourse-1.png",
-                "data/mariocircuit-2.png",
-                "data/vanillalake-1.png",
-                "data/bowsercastle-1.png"
-            ]
-            fn_img = list_fn_img[3]
-
-            # SAT
-            path_sat, pixel_average = generate_sat(fn_img)
-            img = sf.Image.from_file(fn_img)
-            self.texture = sf.Texture.create(width=img.width, height=img.height)
-            self.texture.smooth = True
-
-            self.sprite = sf.Sprite(self.texture)
-            self.sprite.position = (0, (self.video_mode.height // 2))
-            self.sprite.scale(
-                (self.video_mode.width / self.texture.width,
-                 (self.video_mode.height // 2) / self.texture.height)
-            )
-
-            # load the shader
-            self.shader = sf.Shader.from_file(
-                vertex="data/mode7.vert",
-                fragment="data/mode7_with_sat.frag"
-            )
-            self.shader.set_parameter("tex_sat")
-            self.shader.set_parameter("tex_width", self.texture.width)
-            self.shader.set_4float_parameter("pixel_average", *pixel_average)
-
-            logger.info("Load SAT ...")
-            sat = tifffile.imread(str(path_sat))
-            logger.info("Generate Float Texture RGBA32F ...")
-            self.sat_tex_id = 1
-            glGenTextures(1, self.sat_tex_id)
-            glBindTexture(GL_TEXTURE_2D, self.sat_tex_id)
-            # # https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, sat.shape[0],
-                         sat.shape[1], 0, GL_RGBA, GL_FLOAT, sat)
-
-        except IOError as error:
-            logger.error("An error occured: {0}".format(error))
-            exit(1)
-
-        return True
-
-    def on_draw(self, target, states):
-        states.shader = self.shader
-        # TODO: use OpenGL primitives directly instead of using sf::Sprite
-        glEnable(GL_TEXTURE_2D)
-        glBindTexture(GL_TEXTURE_2D, self.sat_tex_id)
-        target.draw(self.sprite, states)
-
-
 class MainApp(object):
     def __init__(self):
         self.video_mode = Effect.video_mode
@@ -490,10 +248,7 @@ class MainApp(object):
         self.clock = sf.Clock()
 
         # create the effects
-        self.effects = (
-            # Mode7(),
-            Mode7WithSAT(),
-            Pixelate(), WaveBlur(), StormBlink(), Edge())
+        self.effects = (Pixelate(), WaveBlur(), StormBlink(), Edge())
         self.current = 0
 
         # initialize them

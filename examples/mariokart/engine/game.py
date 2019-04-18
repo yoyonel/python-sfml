@@ -1,8 +1,10 @@
 """
 """
 from collections import defaultdict
-from math import pi, cos, sin
 
+from examples.mariokart.engine.effect import Effect
+from examples.mariokart.engine.mode7 import Mode7
+from examples.mariokart.engine.mode7_wit_sat import Mode7WithSAT
 from examples.mariokart.engine.profiling import (
     timeit_gpu_results,
     profile_gpu
@@ -11,7 +13,6 @@ from sfml import sf
 
 from examples.mariokart.engine.screen import Screen
 from examples.mariokart.engine.utils import truncate_middle
-
 
 font = sf.Font.from_file('data/sansation.ttf')
 profiling_text = defaultdict(lambda: sf.Text(font=font, character_size=20))
@@ -48,25 +49,12 @@ def main():
     app.framerate_limit = 60
     app.vertical_synchronization = True
 
-    try:
-        circuit_texture = sf.Texture.from_file("data/mariocircuit-1.png")   # type: sf.Texture
-    except IOError as error:
-        raise RuntimeError("An error occured: {0}".format(error))
-    # Activate smooth attribute for all textures objects
-    circuit_texture.smooth = True
+    Effect.video_mode = sf.VideoMode(screen.width, screen.height)
+    effect_mode7 = Mode7WithSAT()
+    # effect_mode7 = Mode7()
+    effect_mode7.load()
 
-    circuit_sprite = sf.Sprite(circuit_texture)
-    circuit_sprite.texture_rectangle = (0, 0, 1024, 1024)
-
-    screen_texture = sf.Texture.create(screen.width, screen.half_height)
-
-    fWorldX = 1000.0
-    fWorldY = 1000.0
-    fWorldA = 0.1
-    fNear = 0.005
-    fFar = 0.03
-    fFoVHalf = pi
-    nMapSize = 1024
+    clock = sf.Clock()
 
     # start the game loop
     while app.is_open:
@@ -83,21 +71,17 @@ def main():
                     if event['code'] == sf.Keyboard.ESCAPE:
                         app.close()
 
+            mouse_position = sf.Mouse.get_position(app)
+            x = mouse_position.x / app.size.x
+            y = mouse_position.y / app.size.y
+            effect_mode7.update(clock.elapsed_time.seconds, x, y)
+
             # clear the window
-            app.clear(sf.Color.BLACK)
+            app.clear(sf.Color(0, 137, 196))
 
             @profile_gpu(func_exit_condition=lambda: app.is_open)
             def _render_circuit():
-                # app.draw(circuit_sprite)
-                # Create Frustum corner points
-                fFarX1 = fWorldX + cos(fWorldA - fFoVHalf) * fFar
-                fFarY1 = fWorldY + sin(fWorldA - fFoVHalf) * fFar
-                fNearX1 = fWorldX + cos(fWorldA - fFoVHalf) * fNear
-                fNearY1 = fWorldY + sin(fWorldA - fFoVHalf) * fNear
-                fFarX2 = fWorldX + cos(fWorldA + fFoVHalf) * fFar
-                fFarY2 = fWorldY + sin(fWorldA + fFoVHalf) * fFar
-                fNearX2 = fWorldX + cos(fWorldA + fFoVHalf) * fNear
-                fNearY2 = fWorldY + sin(fWorldA + fFoVHalf) * fNear
+                app.draw(effect_mode7)
             _render_circuit()
 
         _main_loop()
