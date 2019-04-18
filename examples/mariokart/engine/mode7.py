@@ -1,6 +1,8 @@
 """
 """
 import logging
+from collections import defaultdict
+
 from math import cos, sin
 from sfml import sf
 
@@ -35,13 +37,27 @@ class Mode7(Effect):
         self.fNearY2 = 0.0
 
         self.last_time = 0.0
+        self.ellapsed_time = 0.0
+
+        self.list_fn_img = defaultdict(
+            lambda: "data/resources/mariocircuit-1.png",
+            {
+                'mariocircuit-1': "data/resources/mariocircuit-1.png",
+            }
+        )
+
+        self.texture = None
+        self.sprite = None
+        self.shader = None
+
+        print("Press ARROW (← → ↑ ↓) keys to move")
+        print("Press Q/A to increase/decrease: Near plane")
+        print("Press W/S to increase/decrease: Far plane")
+        print("Press Z/X to increase/decrease: FOV")
 
     def on_load(self):
         try:
-            list_fn_img = [
-                "data/mariocircuit-1.png",
-            ]
-            fn_img = list_fn_img[-1]
+            fn_img = self.list_fn_img['mariocircuit-1']
 
             # load the texture and initialize the sprite
             self.texture = sf.Texture.from_file(fn_img)
@@ -56,8 +72,8 @@ class Mode7(Effect):
 
             # load the shader
             self.shader = sf.Shader.from_file(
-                vertex="data/mode7.vert",
-                fragment="data/mode7.frag"
+                vertex="data/shader/mode7.vert",
+                fragment="data/shader/mode7.frag"
             )
             self.shader.set_parameter("texture")
         except IOError as error:
@@ -67,7 +83,7 @@ class Mode7(Effect):
         return True
 
     def on_update(self, time, x, y):
-        ellapsed_time = time - self.last_time
+        self.ellapsed_time = ellapsed_time = time - self.last_time
         self.shader.set_parameter("time", time)
 
         if sf.Keyboard.is_key_pressed(sf.Keyboard.Q):

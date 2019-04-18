@@ -23,6 +23,8 @@ uniform float tex_width;
 
 uniform vec4 pixel_average;
 
+uniform float size_filter;
+
 float invTextureSize = 1.0 / tex_width;
 
 vec4 sample_sat(sampler2D t, vec2 UL, float size_filter)
@@ -78,7 +80,7 @@ vec4 mode7_with_sat()
     vec2 proj_pos = project_sample_mode7(pos);
 
     // SAT
-    float size_filter = 1.0;
+    //float size_filter = 4.0;
     vec4 tex_sampling = sample_sat(tex_sat, proj_pos, size_filter);
 
     vec4 result = tex_sampling;

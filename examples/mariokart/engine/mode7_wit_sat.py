@@ -15,16 +15,18 @@ logger = logging.getLogger(__name__)
 
 
 class Mode7WithSAT(Mode7):
-    def __init__(self):
+    def __init__(self, size_filter: float = 1.0):
         Mode7.__init__(self)
         self._name = 'Mode 7 with Summed Area Table'
+        self._size_filter = size_filter
+
+        self.sat_tex_id = None
+
+        print("Press * or / to increase/decrease: kernel (box) filter")
 
     def on_load(self):
         try:
-            list_fn_img = [
-                "data/mariocircuit-1.png",
-            ]
-            fn_img = list_fn_img[-1]
+            fn_img = self.list_fn_img['mariocircuit-1']
 
             # SAT
             path_sat, pixel_average = generate_sat(fn_img)
@@ -41,8 +43,8 @@ class Mode7WithSAT(Mode7):
 
             # load the shader
             self.shader = sf.Shader.from_file(
-                vertex="data/mode7.vert",
-                fragment="data/mode7_with_sat.frag"
+                vertex="data/shader/mode7.vert",
+                fragment="data/shader/mode7_with_sat.frag"
             )
             self.shader.set_parameter("tex_sat")
             self.shader.set_parameter("tex_width", self.texture.width)
@@ -58,11 +60,25 @@ class Mode7WithSAT(Mode7):
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, sat.shape[0],
                          sat.shape[1], 0, GL_RGBA, GL_FLOAT, sat)
 
+            self.size_filter = self._size_filter
+
         except IOError as error:
             logger.error("An error occured: {0}".format(error))
             exit(1)
 
         return True
+
+    def on_update(self, time, x, y):
+        super().on_update(time, x, y)
+
+        ellapsed_time = self.ellapsed_time
+
+        if sf.Keyboard.is_key_pressed(sf.Keyboard.MULTIPLY):
+            self.size_filter += 1.0 * ellapsed_time
+            logger.debug(f"+SizeFilter={self.size_filter}")
+        if sf.Keyboard.is_key_pressed(sf.Keyboard.DIVIDE):
+            self.size_filter -= 1.0 * ellapsed_time
+            logger.debug(f"-SizeFilter={self.size_filter}")
 
     def on_draw(self, target, states):
         states.shader = self.shader
@@ -70,3 +86,12 @@ class Mode7WithSAT(Mode7):
         glEnable(GL_TEXTURE_2D)
         glBindTexture(GL_TEXTURE_2D, self.sat_tex_id)
         target.draw(self.sprite, states)
+
+    @property
+    def size_filter(self):
+        return self._size_filter
+
+    @size_filter.setter
+    def size_filter(self, s: float):
+        self._size_filter = max(1.19e-03, s)
+        self.shader.set_parameter("size_filter", self._size_filter)
