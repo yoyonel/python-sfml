@@ -1,103 +1,11 @@
+# coding: utf-8
 """
-bool Compute_Intersection_Segment_Circle(
-                                         // IN
-                                         const vec2& pos_light,
-                                         const float r,
-                                         const vec2 &E0,
-                                         const vec2 &E1,
-                                         // OUT
-                                         vec2 intersections_segment_circle[2]
-                                         )
-{
-    bool result = false;
-
-    vec2 l1 = E0 - pos_light;
-    vec2 l2 = E1 - pos_light;
-    vec2 l1_to_l2 = l2 - l1;
-
-    // Test d'intersection entres les BBox du cercle et du segment/wall
-    if (Intersect_BoundingBox(l1, l2, sf::Vector2f(-r,-r), sf::Vector2f(+r,+r)))
-    {
-        float f_square_radius_light = r*r;
-
-        // (1-b)  systeme quadratique pour trouver les intersections de la droite support du mur et le cercle d'influence a  l'origine
-        Typ_Solutions_Quadratic_Equation solutions = Solve_Quadratic_Equation(l1, l1_to_l2, f_square_radius_light);
-
-        //
-        bool b_wall_intersect_circle = true;
-
-        // - si intersection (la ligne support avec le cercle de lumiere)
-        if (solutions.b_has_solutions)
-        {
-            const float &f_u1 = solutions.f_u0;
-            const float &f_u2 = solutions.f_u1;
-            // On reconstruit les intersections
-            sf::Vector2f intersections_line_circle[2] = {
-                sf::Vector2f(l1 + l1_to_l2*f_u1),
-                sf::Vector2f(l1 + l1_to_l2*f_u2)
-            };
-            // On calcul les distances au carre
-            //  du segment [l1, l2]
-            //  du segment [O, l1] (O: centre de la source de lumiere => O=(0, 0))
-            //  du segment [O, l2] (O: centre de la source de lumiere => O=(0, 0))
-            //  du segment [l1, i1]
-            //  du segment [l1, i2]
-            float f_square_l1l2 = DOT(l1_to_l2, l1_to_l2);
-            float f_square_l1   = DOT(l1, l1);
-            float f_square_l2   = DOT(l2, l2);
-            float f_square_l1i1 = (f_u1*f_u1)*f_square_l1l2;
-            float f_square_l1i2 = (f_u2*f_u2)*f_square_l1l2;
-
-            // 4 cas d'intersections/inclusion possibles pour le segment et le cercle
-            // Est ce que ...
-            bool test10 = (f_square_l1<=f_square_radius_light);                                                         // ... le 1er point du segment/wall est dans le cercle ?
-            bool test11 = (f_square_l2<=f_square_radius_light);                                                         // ... le 2nd point du segment/wall est dans le cercle ?
-            bool test01 = !((f_u1<=0 && f_u2<=0) || (f_square_l1i1>=f_square_l1l2 && f_square_l1i2>=f_square_l1l2));    // ... le segment d'intersection intersecte le segment/wall ?
-            bool test00 = !(test10 || test11);                                                                          // ... les deux points du segment sont en dehors du cercle ?
-            bool test20 = !test10;                                                                                      // ... le 1er point du segment/wall n'est pas dans le cercle ?
-            bool &test21 = test11;                                                                                      // ... le 2nd point du segment/wall est dans le cercle ?
-            bool &test30 = test10;                                                                                      // ... le 1er point du segment/wall est dans le cercle ?
-            bool test31 = !test11;                                                                                      // ... le 2nd point du segment/wall n'est pas dans le cercle ?
-            //
-            if (test00&&test01) // cas 1: les vertex du segment/wall ne sont pas inclus dans le cercle et il y a intersection
-            {
-                intersections_segment_circle[0] = intersections_line_circle[0];
-                intersections_segment_circle[1] = intersections_line_circle[1];
-            }
-            else if (test10&&test11) // cas 2: les vertex du segment/wall sont inclus (tous les 2) dans le cercle
-            {
-                intersections_segment_circle[0] = l1;
-                intersections_segment_circle[1] = l2;
-            }
-            else if (test20&&test21) // cas 3: Un des deux sommets du segment/wall est inclu dans le cercle (le 1er sommet dans ce cas)
-            {
-                intersections_segment_circle[0] = intersections_line_circle[0];
-                intersections_segment_circle[1] = l2;
-            }
-            else if (test30&&test31) // cas 4: Un des deux sommets du segment/wall est inclu dans le cercle (le 2nd sommet dans ce cas)
-            {
-                intersections_segment_circle[0] = l1;
-                intersections_segment_circle[1] = intersections_line_circle[1];
-
-            }
-            else
-            {
-                // sinon le segment/wall n'intersecte pas le cercle de lumiere (donc ne projette pas d'ombre)
-                // Ce cas correspond a  la presence du segment dans un coin de la boundingbox du cercle (mais non inclut dans le cercle)
-                b_wall_intersect_circle = false;
-            }
-        }
-        result = b_wall_intersect_circle && solutions.b_has_solutions;
-    }
-
-    return result;
-}
 """
 from dataclasses import dataclass, field
-
 import numpy as np
 from sfml import sf
 import sys
+from typing import List
 
 EPSILON = sys.float_info.epsilon
 
@@ -106,6 +14,10 @@ EPSILON = sys.float_info.epsilon
 class SolutionsForQuadraticEquation:
     has_real_solutions: bool = False
     roots: np.array = field(default_factory=np.array)
+
+    def __eq__(self, other):
+        return (self.has_real_solutions == other.has_real_solutions) and \
+               np.allclose(self.roots, other.roots)
 
 
 def min_vector2(v0: sf.Vector2, v1: sf.Vector2):
@@ -119,6 +31,8 @@ def max_vector2(v0: sf.Vector2, v1: sf.Vector2):
 def intersect_bounding_box(_v00: sf.Vector2, _v01: sf.Vector2,
                            _v10: sf.Vector2, _v11: sf.Vector2) -> bool:
     """
+    bool Intersect_BoundingBox( const vec2& _v00, const vec2& _v01,
+                                const vec2& _v10, const vec2& _v11)
 
     :param _v00:
     :param _v01:
@@ -138,19 +52,163 @@ def intersect_bounding_box(_v00: sf.Vector2, _v01: sf.Vector2,
 
 
 def solve_quadratic_equation(
-        coef_constant: float,
-        coef_linear: float,
-        coef_quadratic: float
+        constant: float,
+        linear: float,
+        quadratic: float
 ) -> SolutionsForQuadraticEquation:
     """
+    Typ_Solutions_Quadratic_Equation Solve_Quadratic_Equation(
+        float A, float B, float C
+    )
 
-    :param coef_constant:
-    :param coef_linear:
-    :param coef_quadratic:
+    :param constant:
+    :param linear:
+    :param quadratic:
     :return:
     """
-    roots = np.roots([coef_quadratic, coef_linear, coef_constant])
+    roots = np.roots([quadratic, linear, constant])
     return SolutionsForQuadraticEquation(
-        has_real_solutions=all(np.isreal(roots)),
+        has_real_solutions=(len(roots) > 0) and all(np.isreal(roots)),
         roots=roots
     )
+
+
+def DOT(p1: sf.Vector2, p2: sf.Vector2) -> float:
+    return (p1.x * p2.x) + (p1.y * p2.y)
+
+
+def NORM2(p: sf.Vector2) -> float:
+    return DOT(p, p)
+
+
+def compute_intersection_line_origin_circle(
+        p: sf.Vector2,
+        dir: sf.Vector2,
+        radius: float
+) -> SolutionsForQuadraticEquation:
+    """
+    Typ_Solutions_Quadratic_Equation Solve_Quadratic_Equation(
+        vec2 _A,
+        vec2 _AB,
+        float _radius
+    )
+
+    :param p:
+    :param dir:
+    :param radius:
+    :return:
+    """
+    # (1-b)  systeme quadratique pour trouver les intersections
+    # de la droite support du mur et le cercle a  l'origine
+    constant = NORM2(p) - radius
+    linear = 2 * DOT(p, dir)
+    quadratic = NORM2(dir)
+    return solve_quadratic_equation(constant, linear, quadratic)
+
+
+def compute_clip_edge_with_influence_light_circle(
+        pos_light: sf.Vector2,
+        radius_light: float,
+        edge_v0: sf.Vector2,
+        edge_v1: sf.Vector2,
+) -> List[sf.Vector2]:
+    """
+    bool Compute_Intersection_Segment_Circle(
+         // IN
+         const vec2& pos_light,
+         const float r,
+         const vec2 &E0,
+         const vec2 &E1,
+         // OUT
+         vec2 intersections_segment_circle[2]
+     )
+
+    :param pos_light:
+    :param radius_light:
+    :param edge_v0:
+    :param edge_v1:
+    :return:
+    """
+    # results: intersections segment with circle
+    results = []
+
+    # to Light space
+    l1 = edge_v0 - pos_light  # type: sf.Vector2
+    l2 = edge_v1 - pos_light  # type: sf.Vector2
+
+    # Intersection test between light circle's BBox and edge/wall
+    if intersect_bounding_box(l1, l2, sf.Vector2(-radius_light, -radius_light),
+                              sf.Vector2(+radius_light, +radius_light)):
+        sqr_radius_light = radius_light * radius_light
+        l1_to_l2 = l2 - l1  # type: sf.Vector2
+
+        # (1-b) Using quadratic equation to find intersections of wall's
+        # support line and influence light circle (at origin)
+        solutions = compute_intersection_line_origin_circle(l1, l1_to_l2,
+                                                            sqr_radius_light)
+
+        # if real solutions => intersection between the support line and
+        # the influence light circle
+        if solutions.has_real_solutions:
+            u1 = min(solutions.roots)
+            u2 = max(solutions.roots)
+            intersections_line_circle = (l1 + l1_to_l2 * u1, l1 + l1_to_l2 * u2)
+
+            # O: center of the source light => O=(0, 0)
+            # Compute the square root of
+            # - segment [l1, l2]
+            # - segment [O, l1]
+            # - segment [O, l2]
+            # - segment [l1, i1]
+            # - segment [l1, i2]
+            sqr_l1l2 = DOT(l1_to_l2, l1_to_l2)
+            sqr_l1 = DOT(l1, l1)
+            sqr_l2 = DOT(l2, l2)
+            sqr_l1i1 = (u1 * u1) * sqr_l1l2
+            sqr_l1i2 = (u2 * u2) * sqr_l1l2
+
+            # 4 possibles intersections/inclusions between the edge and
+            # the influence light circle.
+            # ... first point of the edge in the circle ?
+            test10 = (sqr_l1 <= sqr_radius_light)
+            # ... second point of the edge in the circle ?
+            test11 = (sqr_l2 <= sqr_radius_light)
+            # ... le segment d'intersection intersecte le segment/wall ?
+            test01 = not (
+                    (u1 <= 0 and u2 <= 0) or
+                    (sqr_l1i1 >= sqr_l1l2 and
+                     sqr_l1i2 >= sqr_l1l2)
+            )
+            # ... edge's vertex are outside the circle ?
+            test00 = not (test10 or test11)
+            # ... the first edge's vertex is not in the circle ?
+            test20 = not test10
+            # ... the second edge's vertex is in the circle ?
+            test21 = test11
+            # ... le 1er point du segment/wall est dans le cercle ?
+            test30 = test10
+            # ... le 2nd point du segment/wall n'est pas dans le cercle ?
+            test31 = not test11
+
+            # cas 1: les vertex du segment/wall ne sont pas inclus dans
+            # le cercle et il y a intersection
+            if test00 and test01:
+                results = intersections_line_circle
+            # cas 2: les vertex du segment/wall sont inclus (tous les 2) dans
+            # le cercle
+            elif test10 and test11:
+                results = [l1, l2]
+            # cas 3: Un des deux sommets du segment/wall est inclu dans
+            # le cercle (le 1er sommet dans ce cas)
+            elif test20 and test21:
+                results = [intersections_line_circle[0], l2]
+            # cas 4: Un des deux sommets du segment/wall est inclu dans
+            # le cercle (le 2nd sommet dans ce cas)
+            elif test30 and test31:
+                results = [l1, intersections_line_circle[1]]
+            # sinon le segment/wall n'intersecte pas le cercle de lumiere
+            # (donc ne projette pas d'ombre).
+            # Ce cas correspond a la presence du segment dans un coin de la
+            # boundingbox du cercle (mais non inclut dans le cercle)
+
+    return results
