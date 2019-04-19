@@ -3,9 +3,12 @@ https://github.com/yoyonel/holyspirit-softshadow2d/blob/version-juin2015/src/Bou
 """
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Optional, List, Iterator
 
+import numpy as np
 from sfml import sf
+
+from softshadow_volume.vector2_tools import norm2
 
 
 class TypeBoundingVolume(Enum):
@@ -26,17 +29,31 @@ class TypeVertexComparedCircle(Enum):
     INSIDE_CIRCLE = 2
 
 
-@dataclass
-class Edge:
-    start: sf.Vector2 = field(default_factory=sf.Vector2)
-    end: sf.Vector2 = field(default_factory=sf.Vector2)
-    type_edge: TypeVertexComparedCircle = TypeVertexComparedCircle.OUTSIDE_CIRCLE
+def _compare_distances(d0, d1):
+    if np.isclose(d0, d1):
+        return TypeVertexComparedCircle.ON_CIRCLE
+    elif d0 > d1:
+        return TypeVertexComparedCircle.OUTSIDE_CIRCLE
+    else:
+        return TypeVertexComparedCircle.INSIDE_CIRCLE
+
+
+def compute_type_vertex(r: float,
+                        vertex: sf.Vector2) -> TypeVertexComparedCircle:
+    return _compare_distances(norm2(vertex), r)
+
+
+def compute_types_vertex(
+        r: float,
+        list_vertex: List[sf.Vector2]
+) -> Iterator[TypeVertexComparedCircle]:
+    return map(lambda v: compute_type_vertex(r, v), list_vertex)
 
 
 @dataclass
 class BoundingVolume:
     shape: Optional[sf.Shape]
-
-    edge: Edge = field(default_factory=Edge)
-    intersection: Edge = field(default_factory=Edge)
-    type_bv: TypeBoundingVolume = TypeVertexComparedCircle.OUTSIDE_CIRCLE
+    proj_clipped_vertex_0: sf.Vector2 = field(default_factory=sf.Vector2)
+    proj_clipped_vertex_1: sf.Vector2 = field(default_factory=sf.Vector2)
+    bv_sv_vertex_0: sf.Vector2 = field(default_factory=sf.Vector2)
+    bv_sv_vertex_1: sf.Vector2 = field(default_factory=sf.Vector2)

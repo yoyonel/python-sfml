@@ -1,26 +1,13 @@
 from sfml import sf
 
-from softshadow_volume.bounding_volume import (
-    BoundingVolume,
-    Edge,
-    TypeVertexComparedCircle
-)
-
-
-def test_edge_default_values():
-    edge = Edge()
-    assert edge.start == sf.Vector2(0, 0)
-    assert edge.end == sf.Vector2(0, 0)
-    assert edge.type_edge == TypeVertexComparedCircle.OUTSIDE_CIRCLE
+from softshadow_volume.bounding_volume import BoundingVolume
 
 
 def test_bounding_volume_default_values():
     bv = BoundingVolume(shape=None)
-    default_edge = Edge(
-        sf.Vector2(0, 0),
-        sf.Vector2(0, 0),
-        TypeVertexComparedCircle.OUTSIDE_CIRCLE
-    )
-    assert bv.edge == default_edge
-    assert bv.intersection == default_edge
+
+    assert bv.bv_sv_vertex_0 == sf.Vector2()
+    assert bv.bv_sv_vertex_1 == sf.Vector2()
+    assert bv.proj_clipped_vertex_0 == sf.Vector2()
+    assert bv.proj_clipped_vertex_1 == sf.Vector2()
     assert bv.shape is None

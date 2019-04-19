@@ -1,109 +1,10 @@
-# coding: utf-8
-"""
-"""
-from dataclasses import dataclass, field
-import numpy as np
-from sfml import sf
-import sys
 from typing import List
 
-EPSILON = sys.float_info.epsilon
+from sfml import sf
 
-
-@dataclass
-class SolutionsForQuadraticEquation:
-    has_real_solutions: bool = False
-    roots: np.array = field(default_factory=np.array)
-
-    def __eq__(self, other):
-        return (self.has_real_solutions == other.has_real_solutions) and \
-               np.allclose(self.roots, other.roots)
-
-
-def min_vector2(v0: sf.Vector2, v1: sf.Vector2):
-    return sf.Vector2(min(v0.x, v1.x), min(v0.y, v1.y))
-
-
-def max_vector2(v0: sf.Vector2, v1: sf.Vector2):
-    return sf.Vector2(max(v0.x, v1.x), max(v0.y, v1.y))
-
-
-def intersect_bounding_box(_v00: sf.Vector2, _v01: sf.Vector2,
-                           _v10: sf.Vector2, _v11: sf.Vector2) -> bool:
-    """
-    bool Intersect_BoundingBox( const vec2& _v00, const vec2& _v01,
-                                const vec2& _v10, const vec2& _v11)
-
-    :param _v00:
-    :param _v01:
-    :param _v10:
-    :param _v11:
-    :return:
-    """
-    min_0 = min_vector2(_v00, _v01)
-    max_0 = max_vector2(_v00, _v01)
-    min_1 = min_vector2(_v10, _v11)
-    max_1 = max_vector2(_v10, _v11)
-
-    return not ((min_0.x > max_1.x) or
-                (min_1.x > max_0.x) or
-                (min_0.y > max_1.y) or
-                (min_1.y > max_0.y))
-
-
-def solve_quadratic_equation(
-        constant: float,
-        linear: float,
-        quadratic: float
-) -> SolutionsForQuadraticEquation:
-    """
-    Typ_Solutions_Quadratic_Equation Solve_Quadratic_Equation(
-        float A, float B, float C
-    )
-
-    :param constant:
-    :param linear:
-    :param quadratic:
-    :return:
-    """
-    roots = np.roots([quadratic, linear, constant])
-    return SolutionsForQuadraticEquation(
-        has_real_solutions=(len(roots) > 0) and all(np.isreal(roots)),
-        roots=roots
-    )
-
-
-def DOT(p1: sf.Vector2, p2: sf.Vector2) -> float:
-    return (p1.x * p2.x) + (p1.y * p2.y)
-
-
-def NORM2(p: sf.Vector2) -> float:
-    return DOT(p, p)
-
-
-def compute_intersection_line_origin_circle(
-        p: sf.Vector2,
-        dir: sf.Vector2,
-        radius: float
-) -> SolutionsForQuadraticEquation:
-    """
-    Typ_Solutions_Quadratic_Equation Solve_Quadratic_Equation(
-        vec2 _A,
-        vec2 _AB,
-        float _radius
-    )
-
-    :param p:
-    :param dir:
-    :param radius:
-    :return:
-    """
-    # (1-b)  systeme quadratique pour trouver les intersections
-    # de la droite support du mur et le cercle a  l'origine
-    constant = NORM2(p) - radius
-    linear = 2 * DOT(p, dir)
-    quadratic = NORM2(dir)
-    return solve_quadratic_equation(constant, linear, quadratic)
+from softshadow_volume.compute_intersection import intersect_bounding_box, \
+    compute_intersection_line_origin_circle
+from softshadow_volume.vector2_tools import dot
 
 
 def compute_clip_edge_with_influence_light_circle(
@@ -161,9 +62,9 @@ def compute_clip_edge_with_influence_light_circle(
             # - segment [O, l2]
             # - segment [l1, i1]
             # - segment [l1, i2]
-            sqr_l1l2 = DOT(l1_to_l2, l1_to_l2)
-            sqr_l1 = DOT(l1, l1)
-            sqr_l2 = DOT(l2, l2)
+            sqr_l1l2 = dot(l1_to_l2, l1_to_l2)
+            sqr_l1 = dot(l1, l1)
+            sqr_l2 = dot(l2, l2)
             sqr_l1i1 = (u1 * u1) * sqr_l1l2
             sqr_l1i2 = (u2 * u2) * sqr_l1l2
 

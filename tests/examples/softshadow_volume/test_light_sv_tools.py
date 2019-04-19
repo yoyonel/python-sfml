@@ -1,6 +1,6 @@
 import pytest
 
-from softshadow_volume.light_sv_tools import solve_quadratic_equation
+from softshadow_volume.compute_intersection import solve_quadratic_equation
 
 
 def test_light_sv_tools():
