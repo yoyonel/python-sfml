@@ -1,9 +1,11 @@
-from typing import List, Tuple
+from typing import List
 
 from sfml import sf
 
 from softshadow_volume.bounding_volume import BoundingVolume
-from softshadow_volume.compute_intersection import compute_intersection_of_tangents_lines_on_circle
+from softshadow_volume.compute_intersection import (
+    compute_intersection_of_tangents_lines_on_circle
+)
 from softshadow_volume.vector2_tools import normalize, compute_middle
 
 

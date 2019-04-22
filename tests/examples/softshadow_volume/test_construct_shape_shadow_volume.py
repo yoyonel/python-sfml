@@ -3,12 +3,14 @@
 import numpy as np
 import pytest
 from sfml import sf
-import sys
 
-from softshadow_volume.compute_clip import \
+from softshadow_volume import EPSILON
+from softshadow_volume.compute_clip import (
     compute_clip_edge_with_influence_light_circle
-from softshadow_volume.compute_intersection import \
+)
+from softshadow_volume.compute_intersection import (
     compute_intersection_line_origin_circle
+)
 from softshadow_volume.shape_shadow_volume import construct_shape_shadow_volume
 from softshadow_volume.vector2_tools import norm2, dot, normalize
 
@@ -33,12 +35,13 @@ def test_construct_shape_shadow_volume_raise_exception():
     [
         ({'pos_light': sf.Vector2(),
           'radius_influence_circle': 1.0,
-          'vertex_walls': (sf.Vector2(-1.0/3.0, 0.5), sf.Vector2(+1.0/3.0, 0.5))
+          'vertex_walls': (
+          sf.Vector2(-1.0 / 3.0, 0.5), sf.Vector2(+1.0 / 3.0, 0.5))
           }),
         ({'pos_light': sf.Vector2(),
           'radius_influence_circle': 1.0,
-          'vertex_walls': (sf.Vector2(+1.0/3.0, -0.5),
-                           sf.Vector2(+1.0/3.0, 0.5))
+          'vertex_walls': (sf.Vector2(+1.0 / 3.0, -0.5),
+                           sf.Vector2(+1.0 / 3.0, 0.5))
           }),
     ]
 )
@@ -80,7 +83,7 @@ def test_construct_shape_shadow_volume(test_input):
     solutions = compute_intersection_line_origin_circle(
         result.bv_sv_vertex_0,
         normalize(result.bv_sv_vertex_1 - result.bv_sv_vertex_0),
-        radius_influence_circle + sys.float_info.epsilon
+        radius_influence_circle + EPSILON
     )
     # real solutions
     assert solutions.has_real_solutions

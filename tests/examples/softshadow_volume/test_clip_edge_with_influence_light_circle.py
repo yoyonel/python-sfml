@@ -1,5 +1,3 @@
-from math import sqrt
-
 import numpy as np
 import pytest
 from sfml import sf
@@ -7,36 +5,7 @@ from sfml import sf
 from softshadow_volume.compute_clip import (
     compute_clip_edge_with_influence_light_circle
 )
-from softshadow_volume.compute_intersection import (
-    SolutionsForQuadraticEquation,
-    compute_intersection_line_origin_circle
-)
-
-half_sqrt_two = sqrt(2.0) / 2.0
-
-
-@pytest.mark.parametrize(
-    'test_input,expected',
-    [
-        ((sf.Vector2(), sf.Vector2(), 1.0),
-         SolutionsForQuadraticEquation(False, np.array([]))),
-        # axis x, y from origin
-        ((sf.Vector2(), sf.Vector2(1, 0), 1.0),
-         SolutionsForQuadraticEquation(True, np.array([-1, +1]))),
-        ((sf.Vector2(), sf.Vector2(0, 1), 1.0),
-         SolutionsForQuadraticEquation(True, np.array([-1, +1]))),
-        # diagonal from origin
-        ((sf.Vector2(), sf.Vector2(1, 1), 1.0),
-         SolutionsForQuadraticEquation(
-             True, np.array([-half_sqrt_two, +half_sqrt_two]))),
-        # tangent to the circle
-        ((sf.Vector2(1, 0), sf.Vector2(0, 1), 1.0),
-         SolutionsForQuadraticEquation(True, np.array([0, 0]))),
-    ]
-)
-def test_compute_intersection_line_origin_circle(test_input, expected):
-    solutions = compute_intersection_line_origin_circle(*test_input)
-    assert solutions == expected
+from tests.conftest import half_sqrt_two
 
 
 @pytest.mark.parametrize(

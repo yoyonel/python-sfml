@@ -1,10 +1,13 @@
 from dataclasses import dataclass, field
+from math import sqrt
+from typing import Tuple, Optional, List
 
 import numpy as np
 from sfml import sf
 
+from softshadow_volume import EPSILON
 from softshadow_volume.vector2_tools import min_vector2, max_vector2, norm2, \
-    dot, normal, det
+    dot, normal, det, norm, normalize
 
 
 @dataclass
@@ -63,8 +66,8 @@ def solve_quadratic_equation(
 
 
 def compute_intersection_line_origin_circle(
-        p: sf.Vector2,
-        dir: sf.Vector2,
+        p_on_line: sf.Vector2,
+        vdir_line: sf.Vector2,
         radius: float
 ) -> SolutionsForQuadraticEquation:
     """
@@ -74,22 +77,22 @@ def compute_intersection_line_origin_circle(
         float _radius
     )
 
-    :param p:
-    :param dir:
+    :param p_on_line:
+    :param vdir_line:
     :param radius:
     :return:
     """
     # (1-b)  systeme quadratique pour trouver les intersections
     # de la droite support du mur et le cercle a  l'origine
-    constant = norm2(p) - radius*radius
-    linear = 2 * dot(p, dir)
-    quadratic = norm2(dir)
+    constant = norm2(p_on_line) - radius ** 2
+    linear = 2 * dot(p_on_line, vdir_line)
+    quadratic = norm2(vdir_line)
     return solve_quadratic_equation(constant, linear, quadratic)
 
 
 def compute_intersection_of_tangents_lines_on_circle(
-        P1: sf.Vector2,
-        P3: sf.Vector2
+        p1: sf.Vector2,
+        p3: sf.Vector2
 ) -> sf.Vector2:
     """
     vec2 Compute_Intersection_Lines( const vec2& P1, const vec2& P3)
@@ -97,18 +100,123 @@ def compute_intersection_of_tangents_lines_on_circle(
     P1, P2 points on the same circle.
     note: don't test if lines are colinear
 
-    :param P1:
-    :param P2:
+    :param p1:
+    :param p3:
     :return:
     """
-    P2 = P1 + normal(P1)
-    P4 = P3 + normal(P3)
+    p2 = p1 + normal(p1)
+    p4 = p3 + normal(p3)
 
-    P3P1 = P1 - P4
-    P1P2 = P2 - P1
-    P3P4 = P4 - P3
+    p3_p1 = p1 - p4
+    p1_p2 = p2 - p1
+    p3_p4 = p4 - p3
 
-    denum = 1 / det(P1P2, P3P4)
-    ua = det(P3P4, P3P1) * denum
+    denum = 1 / det(p1_p2, p3_p4)
+    ua = det(p3_p4, p3_p1) * denum
 
-    return P1 + P1P2 * ua
+    return p1 + p1_p2 * ua
+
+
+def compute_intersection_circle_circle(
+        o0: sf.Vector2,
+        r0: float,
+        o1: sf.Vector2,
+        r1: float
+) -> Optional[Tuple[sf.Vector2, sf.Vector2]]:
+    """
+    // url: http://mathworld.wolfram.com/Circle-CircleIntersection.html
+    // Methode utilisant un changement de repere (2D)
+    bool Compute_Intersection_Circles_1(
+        const vec2& O0,
+        const float R0,
+        const vec2& O1,
+        const float R1,
+        vec2 P[2]
+    )
+
+    :param o0:
+    :param r0:
+    :param o1:
+    :param r1:
+    :return:
+    """
+    results = None
+
+    o0_to_01 = o1 - o0
+    normal_o0_to_01 = normal(o0_to_01)
+
+    d = norm(o0_to_01)
+    if np.isclose(d, 0.0):
+        return None
+
+    r = r1
+    R = r0
+
+    d2 = d * d
+    r2 = r * r
+    R2 = R * R
+
+    # Calcul de la coordonnee x commune aux 2 intersections
+    denum = 1 / (2 * d)
+    denum2 = denum * denum
+    x = (d2 - r2 + R2) * denum
+    # Calcul des y des intersections
+    square_y = (4 * d2 * R2 - (d2 - r2 + R2) * (d2 - r2 + R2)) * denum2
+    # TODO: deal with square_y close to 0 => 1 solution
+    if square_y >= -EPSILON:
+        y01 = sqrt(square_y)
+        y0 = +y01
+        y1 = -y01
+        # Normalisation des vecteurs caracterisant les axes
+        # du repere de calcul d'intersections
+        o0_to_01 = o0_to_01 / d
+        normal_o0_to_01 = normalize(normal_o0_to_01)
+
+        results = (
+            o0_to_01 * x + normal_o0_to_01 * y0,
+            o0_to_01 * x + normal_o0_to_01 * y1
+        )
+
+    return results
+
+
+def compute_intersection_solid_angle_1d(exsec: float) -> List[sf.Vector2]:
+    """
+
+    https://fr.wikipedia.org/wiki/Fonction_trigonom%C3%A9trique
+    https://en.wikipedia.org/wiki/Exsecant
+    https://www.dcode.fr/simplification-mathematique
+    https://en.wikipedia.org/wiki/Solid_angle
+
+    :param exsec:
+    :return:
+    """
+    if np.isclose(exsec, 0.0):
+        return [sf.Vector2(1, 0)]
+
+    # https://www.google.com/search?ei=RbO8XJvvIsuJlwSbrqmgCA&q=1%2F%28x%2B1%29&oq=1%2F%28x%2B1%29&gs_l=psy-ab.3..35i39j0j0i203l8.11913.41442..92049...4.0..1.113.632.1j5......0....1..gws-wiz.......0i71j0i7i30j0i30.iNZtWRk-E4Y
+    x = 1 / (exsec + 1)
+    # https://www.google.fr/search?ei=obK8XLatH9DeasautdgN&q=sqrt%28%28x*%28x%2B2%29%29%29%2F%28x%2B1%29&oq=sqrt%28%28x*%28x%2B2%29%29%29%2F%28x%2B1%29&gs_l=psy-ab.3..0i8i10i30j0i8i30j0i8i10i30l2j0i8i30l6.1163329.1164961..1165528...0.0..0.73.261.4......0....1..gws-wiz.......0i71.iYkBYeR_A0E
+    y = sqrt(exsec * (exsec + 2)) * x
+    # solutions
+    return [sf.Vector2(x, -y), sf.Vector2(x, +y)]
+
+
+def compute_intersection_solid_angle_2d(v: sf.Vector2) -> List[sf.Vector2]:
+    """
+
+    https://stackoverflow.com/questions/4780119/2d-euclidean-vector-rotations
+
+    :param v:
+    :return:
+    """
+    norm_v = norm(v)
+    cos_theta, sin_theta = v / norm_v
+    solid_angle_vectors = compute_intersection_solid_angle_1d(norm_v - 1.0)
+    return [
+        sf.Vector2(
+            solid_angle_vector.x * cos_theta - solid_angle_vector.y * sin_theta,
+            solid_angle_vector.x * sin_theta + solid_angle_vector.y * cos_theta,
+        )
+        for solid_angle_vector in solid_angle_vectors
+    ]

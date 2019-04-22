@@ -6,6 +6,8 @@ from typing import List
 from sfml import sf
 
 from softshadow_volume.bounding_volume import BoundingVolume
+from softshadow_volume.shape_penumbra_volume import \
+    construct_shape_penumbras_volumes
 from softshadow_volume.shape_shadow_volume import construct_shape_shadow_volume
 from softshadow_volume.compute_clip import (
     compute_clip_edge_with_influence_light_circle
@@ -78,12 +80,22 @@ class LightWall:
                 # => Hard Shadow and Inner Penumbra
                 # Construct_Shadow_Volume_Bounding_Volume(...)
                 bv_hard_shadow = construct_shape_shadow_volume(
-                        self.pos,
-                        self.influence_radius,
-                        clipped_wall_with_influence_circle,
-                        sf.Color.BLUE
-                    )
+                    self.pos,
+                    self.influence_radius,
+                    clipped_wall_with_influence_circle,
+                    sf.Color.BLUE
+                )
                 self.list_bv.append(bv_hard_shadow)
+
+                EO_E1_LS = E1_LS - E0_LS  # type: sf.Vector2
 
                 # Add Bounding Volumes for Penumbra (Inner Outer)
                 # Construct_Penumbras_Bounding_Volumes
+                bounding_volumes_for_penumbras = construct_shape_penumbras_volumes(
+                    self.pos,
+                    self.influence_radius,
+                    clipped_wall_with_influence_circle,
+                    EO_E1_LS,
+                    sf.Color.BLUE
+                )
+                self.list_bv += bounding_volumes_for_penumbras

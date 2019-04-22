@@ -3,7 +3,7 @@ https://github.com/yoyonel/holyspirit-softshadow2d/blob/version-juin2015/src/Bou
 """
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, List, Iterator
+from typing import Optional, List, Iterator, Tuple
 
 import numpy as np
 from sfml import sf
@@ -57,3 +57,18 @@ class BoundingVolume:
     proj_clipped_vertex_1: sf.Vector2 = field(default_factory=sf.Vector2)
     bv_sv_vertex_0: sf.Vector2 = field(default_factory=sf.Vector2)
     bv_sv_vertex_1: sf.Vector2 = field(default_factory=sf.Vector2)
+
+
+@dataclass
+class BoundingVolumePenumbra:
+    # Points on unit light circle for generating penumbras volumes
+    p_light: Tuple[sf.Vector2, sf.Vector2]
+    # edge's point
+    p_edge: sf.Vector2
+    # projectives points for penumbras volumes
+    proj_p_light: Tuple[sf.Vector2, sf.Vector2]
+    # points for bounding volumes (for penumbras volumes)
+    bv: Tuple[sf.Vector2, sf.Vector2]
+    type_volume: TypeBoundingVolume
+    #
+    shape: Optional[sf.Shape]
