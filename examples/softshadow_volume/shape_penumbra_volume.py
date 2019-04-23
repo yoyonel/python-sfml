@@ -8,7 +8,8 @@ from typing import List
 
 from sfml import sf
 
-from softshadow_volume.bounding_volume import BoundingVolumePenumbra
+from softshadow_volume.bounding_volume import BoundingVolumePenumbra, \
+    TypeBoundingVolume
 from softshadow_volume.compute_intersection import (
     compute_intersection_solid_angle_2d
 )
@@ -17,8 +18,8 @@ from softshadow_volume.vector2_tools import normalize
 
 def construct_shape_penumbras_volumes(
         clipped_edge_with_influence_circle: List[sf.Vector2],
-        vdir_edge: sf.Vector2,
         influence_radius: float,
+        inner_radius: float,
         color: sf.Color
 ) -> List[BoundingVolumePenumbra]:
     """
@@ -42,7 +43,10 @@ def construct_shape_penumbras_volumes(
 
     # compute light solid angles for each edge's vertices
     p_light_for_edge = [
-        compute_intersection_solid_angle_2d(v_e)
+        [
+            p * inner_radius
+            for p in compute_intersection_solid_angle_2d(v_e)
+        ]
         for v_e in edge
     ]
 
@@ -53,7 +57,7 @@ def construct_shape_penumbras_volumes(
             for p in p_light
         ]
         for v_e in edge
-        for e, p_light in zip(v_e, p_light_for_edge)
+        for e, p_light in zip([v_e], p_light_for_edge)
     ]
 
     # bv_for_e0 = [
@@ -64,3 +68,13 @@ def construct_shape_penumbras_volumes(
     #                                                             proj_p0_e0)
     # bv_p1_e0 = compute_intersection_of_tangents_lines_on_circle(proj_e0,
     #                                                             proj_p1_e0)
+    return [
+        BoundingVolumePenumbra(
+            p_light=p_light_for_edge,
+            p_edge=edge,
+            proj_edge_with_projs_light=proj_p_light,
+            bv=[None, None],
+            type_volume=TypeBoundingVolume.INNER_PENUMBRA,
+            shape=None
+        )
+    ]

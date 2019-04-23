@@ -65,10 +65,11 @@ class BoundingVolumePenumbra:
     p_light: Tuple[sf.Vector2, sf.Vector2]
     # edge's point
     p_edge: sf.Vector2
-    # projectives points for penumbras volumes
-    proj_p_light: Tuple[sf.Vector2, sf.Vector2]
+    # edge's centers proj (for penumbras volumes)
+    proj_edge_with_projs_light: Tuple[sf.Vector2, sf.Vector2]
     # points for bounding volumes (for penumbras volumes)
     bv: Tuple[sf.Vector2, sf.Vector2]
+    #
     type_volume: TypeBoundingVolume
     #
     shape: Optional[sf.Shape]

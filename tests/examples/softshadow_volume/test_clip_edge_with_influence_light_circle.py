@@ -3,7 +3,7 @@ import pytest
 from sfml import sf
 
 from softshadow_volume.compute_clip import (
-    compute_clip_edge_with_influence_light_circle
+    compute_clip_edge_with_circle
 )
 from tests.conftest import half_sqrt_two
 
@@ -39,7 +39,7 @@ from tests.conftest import half_sqrt_two
     ]
 )
 def test_compute_clip_edge_with_influence_light_circle(test_input, expected):
-    results = compute_clip_edge_with_influence_light_circle(**test_input)
+    results = compute_clip_edge_with_circle(**test_input)
     # TODO: do better comparison :p
     if not np.allclose([list(iter(v)) for v in results],
                        [list(iter(v)) for v in expected]):

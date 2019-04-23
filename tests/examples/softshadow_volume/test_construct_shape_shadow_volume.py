@@ -6,7 +6,7 @@ from sfml import sf
 
 from softshadow_volume import EPSILON
 from softshadow_volume.compute_clip import (
-    compute_clip_edge_with_influence_light_circle
+    compute_clip_edge_with_circle
 )
 from softshadow_volume.compute_intersection import (
     compute_intersection_line_origin_circle
@@ -23,7 +23,7 @@ def test_construct_shape_shadow_volume_raise_exception():
         construct_shape_shadow_volume(
             pos_light,
             radius_influence_circle,
-            compute_clip_edge_with_influence_light_circle(
+            compute_clip_edge_with_circle(
                 pos_light, radius_influence_circle, *vertex_walls),
             color=sf.Color.WHITE
         )
@@ -53,7 +53,7 @@ def test_construct_shape_shadow_volume(test_input):
     result = construct_shape_shadow_volume(
         pos_light,
         radius_influence_circle,
-        compute_clip_edge_with_influence_light_circle(
+        compute_clip_edge_with_circle(
             pos_light, radius_influence_circle, *vertex_walls),
         color=sf.Color.WHITE
     )

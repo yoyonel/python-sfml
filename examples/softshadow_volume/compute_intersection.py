@@ -191,6 +191,8 @@ def compute_intersection_solid_angle_1d(exsec: float) -> List[sf.Vector2]:
     :param exsec:
     :return:
     """
+    assert exsec >= 0.0
+
     if np.isclose(exsec, 0.0):
         return [sf.Vector2(1, 0)]
 
@@ -210,9 +212,11 @@ def compute_intersection_solid_angle_2d(v: sf.Vector2) -> List[sf.Vector2]:
     :param v:
     :return:
     """
+    # convert in 1d problem
     norm_v = norm(v)
     cos_theta, sin_theta = v / norm_v
     solid_angle_vectors = compute_intersection_solid_angle_1d(norm_v - 1.0)
+    # return back to 2d problem with 2d rotation
     return [
         sf.Vector2(
             solid_angle_vector.x * cos_theta - solid_angle_vector.y * sin_theta,

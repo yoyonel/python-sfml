@@ -7,7 +7,7 @@ from softshadow_volume.compute_intersection import intersect_bounding_box, \
 from softshadow_volume.vector2_tools import dot
 
 
-def compute_clip_edge_with_influence_light_circle(
+def compute_clip_edge_with_circle(
         pos_light: sf.Vector2,
         radius_light: float,
         edge_v0: sf.Vector2,
