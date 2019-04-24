@@ -3,8 +3,8 @@
 from math import cos, sin
 from sfml import sf
 
-from softshadow_volume.graphical.light import build_shapes_for_light
-from softshadow_volume.graphical.light_wall import build_shapes_for_light_wall
+from softshadow_volume.renderer.light import build_shapes_for_light
+from softshadow_volume.renderer.light_wall import build_shapes_for_light_wall
 from softshadow_volume.light import Light
 from softshadow_volume.light_wall import LightWall
 
@@ -53,7 +53,7 @@ class DemoShadowVolume(Effect):
         self.light = Light(
             pos=sf.Vector2(half_width, half_height - half_height // 2),
             inner_radius=20,
-            influence_radius=400,
+            influence_radius=350,
         )
 
         self.ligth_wall = LightWall(
@@ -76,8 +76,9 @@ class DemoShadowVolume(Effect):
             # half_height - half_height // 2 + sin(time) * 300
             # half_width - 10,
             # half_height - half_height // 2 + 50
-            700,
-            150
+            # 700,
+            # 150
+            x * window.size.x, y * window.size.y
         )
         # self.ligth_wall.update()
 

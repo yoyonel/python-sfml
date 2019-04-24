@@ -111,7 +111,11 @@ def compute_intersection_of_tangents_lines_on_circle(
     p1_p2 = p2 - p1
     p3_p4 = p4 - p3
 
-    denum = 1 / det(p1_p2, p3_p4)
+    d = det(p1_p2, p3_p4)
+    if np.isclose(d, 0.0):
+        return p1
+
+    denum = 1 / d
     ua = det(p3_p4, p3_p1) * denum
 
     return p1 + p1_p2 * ua
@@ -180,7 +184,9 @@ def compute_intersection_circle_circle(
     return results
 
 
-def compute_intersection_solid_angle_1d(exsec: float) -> List[sf.Vector2]:
+def compute_intersection_solid_angle_1d(
+        exsec: float
+) -> List[sf.Vector2]:
     """
 
     https://fr.wikipedia.org/wiki/Fonction_trigonom%C3%A9trique
@@ -200,11 +206,14 @@ def compute_intersection_solid_angle_1d(exsec: float) -> List[sf.Vector2]:
     x = 1 / (exsec + 1)
     # https://www.google.fr/search?ei=obK8XLatH9DeasautdgN&q=sqrt%28%28x*%28x%2B2%29%29%29%2F%28x%2B1%29&oq=sqrt%28%28x*%28x%2B2%29%29%29%2F%28x%2B1%29&gs_l=psy-ab.3..0i8i10i30j0i8i30j0i8i10i30l2j0i8i30l6.1163329.1164961..1165528...0.0..0.73.261.4......0....1..gws-wiz.......0i71.iYkBYeR_A0E
     y = sqrt(exsec * (exsec + 2)) * x
+
     # solutions
     return [sf.Vector2(x, -y), sf.Vector2(x, +y)]
 
 
-def compute_intersection_solid_angle_2d(v: sf.Vector2) -> List[sf.Vector2]:
+def compute_intersection_solid_angle_2d(
+        v: sf.Vector2
+) -> List[sf.Vector2]:
     """
 
     https://stackoverflow.com/questions/4780119/2d-euclidean-vector-rotations
@@ -216,6 +225,7 @@ def compute_intersection_solid_angle_2d(v: sf.Vector2) -> List[sf.Vector2]:
     norm_v = norm(v)
     cos_theta, sin_theta = v / norm_v
     solid_angle_vectors = compute_intersection_solid_angle_1d(norm_v - 1.0)
+
     # return back to 2d problem with 2d rotation
     return [
         sf.Vector2(

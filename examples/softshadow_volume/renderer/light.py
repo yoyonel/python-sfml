@@ -4,7 +4,7 @@ from typing import Dict
 
 from sfml import sf
 
-from softshadow_volume.graphical.circle import build_circle_shape
+from softshadow_volume.renderer.circle import build_circle_shape
 from softshadow_volume.light import Light
 
 

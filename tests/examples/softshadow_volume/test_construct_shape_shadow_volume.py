@@ -11,7 +11,7 @@ from softshadow_volume.compute_clip import (
 from softshadow_volume.compute_intersection import (
     compute_intersection_line_origin_circle
 )
-from softshadow_volume.shape_shadow_volume import construct_shape_shadow_volume
+from softshadow_volume.bv_shadow_volume import construct_bounding_volume_for_shadow
 from softshadow_volume.vector2_tools import norm2, dot, normalize
 
 
@@ -20,7 +20,7 @@ def test_construct_shape_shadow_volume_raise_exception():
     radius_influence_circle = 10.0
     vertex_walls = (sf.Vector2(),) * 2
     with pytest.raises(ValueError):
-        construct_shape_shadow_volume(
+        construct_bounding_volume_for_shadow(
             pos_light,
             radius_influence_circle,
             compute_clip_edge_with_circle(
@@ -50,7 +50,7 @@ def test_construct_shape_shadow_volume(test_input):
     radius_influence_circle = test_input['radius_influence_circle']
     vertex_walls = test_input['vertex_walls']
 
-    result = construct_shape_shadow_volume(
+    result = construct_bounding_volume_for_shadow(
         pos_light,
         radius_influence_circle,
         compute_clip_edge_with_circle(

@@ -4,7 +4,7 @@ from sfml import sf
 
 from softshadow_volume.compute_intersection import intersect_bounding_box, \
     compute_intersection_line_origin_circle
-from softshadow_volume.vector2_tools import dot
+from softshadow_volume.vector2_tools import dot, norm2
 
 
 def compute_clip_edge_with_circle(
@@ -112,4 +112,38 @@ def compute_clip_edge_with_circle(
             # Ce cas correspond a la presence du segment dans un coin de la
             # boundingbox du cercle (mais non inclut dans le cercle)
 
+    return results
+
+
+def clip_edge_with_circle(
+        v0: sf.Vector2,
+        v1: sf.Vector2,
+        light_pos: sf.Vector2,
+        radius: float,
+        epsilon: float = 10e-11
+) -> List[sf.Vector2]:
+    """
+    TODO: write unit tests !
+
+    :param v0:
+    :param v1:
+    :param light_pos:
+    :param radius:
+    :param epsilon:
+    :return:
+    """
+    v0_ls = v0 - light_pos
+    v1_ls = v1 - light_pos
+    v01_ls = v1_ls - v0_ls
+    solutions = compute_intersection_line_origin_circle(v0_ls, v01_ls, radius)
+    sqr_radius = (radius ** 2) + epsilon
+    results = [
+        (v0_ls + v01_ls * root) + light_pos
+        for root in filter(
+            lambda root: (0.0 <= root <= 1.0) and
+                         norm2(v0_ls + v01_ls * root) <= sqr_radius,
+            (list(solutions.roots) + [0.0, 1.0]) if solutions.has_real_solutions
+            else []
+        )
+    ]
     return results

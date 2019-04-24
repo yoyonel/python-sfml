@@ -43,7 +43,7 @@ class Line:
         )
 
     def draw_sprite(self, app: sf.RenderWindow, screen: Screen):
-        # if a texture (object) is associate to a line render the sprite object
+        # if a texture (object) is associate to a line renderer the sprite object
         if self.tex_object:
             # new instance of Sprite
             self.sprite_object = sf.Sprite(texture=self.tex_object)
@@ -80,5 +80,5 @@ class Line:
             # position
             sprite_object.position = dest_x, dest_y
 
-            # render the sprite
+            # renderer the sprite
             app.draw(sprite_object)

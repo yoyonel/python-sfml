@@ -189,7 +189,7 @@ def main():
 
         window.draw(sprite_background)
 
-        # render field
+        # renderer field
         for i, row_field in enumerate(board):
             for j, color_in_field in enumerate(row_field):
                 if color_in_field != 0:
@@ -198,7 +198,7 @@ def main():
                     sprite_quads.move((28, 31))  # offset
                     window.draw(sprite_quads)
 
-        # render current tetromino
+        # renderer current tetromino
         for quad in tetromino:
             sprite_quads.texture_rectangle = (color_num * 18, 0, 18, 18)
             sprite_quads.position = quad.x * 18, quad.y * 18

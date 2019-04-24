@@ -177,7 +177,7 @@ class Edge(Effect):
             y = cos(0.25 * (time * (len(self.entities) - i) + i)) * 200 + 250
             entity.position = (x, y)
 
-        # render the updated scene to the off-screen surface
+        # renderer the updated scene to the off-screen surface
         self.surface.clear(sf.Color.WHITE)
         self.surface.draw(self.background_sprite)
 

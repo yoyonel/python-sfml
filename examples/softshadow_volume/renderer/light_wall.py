@@ -4,8 +4,8 @@ from typing import Dict, List
 
 from sfml import sf
 
-from softshadow_volume.graphical.circle import build_circle_shape
-from softshadow_volume.graphical.edge import build_edge_shape
+from softshadow_volume.renderer.circle import build_circle_shape
+from softshadow_volume.renderer.edge import build_edge_shape
 from softshadow_volume.light_wall import LightWall
 
 
@@ -36,6 +36,7 @@ def build_shapes_for_light_wall(
         bv.shape
         for bv in bvs['hard_shadow']
     ]
+
     hsv_points = [
         build_circle_shape(
             radius=1.5,
@@ -45,15 +46,16 @@ def build_shapes_for_light_wall(
         for shape in shapes['shadow_volumes']
         for i in range(shape.point_count)
     ]
-    # shapes['shadow_volumes'] += hsv_points
-    # shapes['shadow_volumes'] += [
-    #     build_circle_shape(
-    #         radius=5,
-    #         position=p,
-    #         fill_color=sf.Color.BLUE
-    #     )
-    #     for p in lw.clip_wall_with_light_influence()
-    # ]
+    shapes['shadow_volumes'] += hsv_points
+
+    shapes['shadow_volumes'] += [
+        build_circle_shape(
+            radius=5,
+            position=p,
+            fill_color=sf.Color.BLUE
+        )
+        for p in lw.clip_wall_with_light()
+    ]
 
     # penumbras
     shapes['penumbras'] = []
@@ -69,6 +71,7 @@ def build_shapes_for_light_wall(
         for proj_center_light in p_light
     ]
     shapes['penumbras'] += cpl_points
+
     #
     proj_edge_cpl_points = [
         build_circle_shape(
@@ -83,4 +86,38 @@ def build_shapes_for_light_wall(
     ]
     shapes['penumbras'] += proj_edge_cpl_points
 
+    #
+    proj_edge_cpl_points = [
+        build_circle_shape(
+            radius=2,
+            position=p_bv + lw.light.pos,
+            outline_color=sf.Color(255, 64, 64, 255),
+            fill_color=sf.Color.TRANSPARENT,
+        )
+        for bv in bvs['penumbras']
+        for p_bv in bv.bv
+    ]
+    shapes['penumbras'] += proj_edge_cpl_points
+
+    for bv in bvs['penumbras']:
+        for shape_in_inner_penumbra in bv.shapes_inner_penumbras:
+            fill_color = shape_in_inner_penumbra.fill_color
+            fill_color.a = int(sv_alpha*255)
+            shape_in_inner_penumbra.fill_color = fill_color
+        for shape_in_outer_penumbra in bv.shapes_outer_penumbras:
+            fill_color = shape_in_outer_penumbra.fill_color
+            fill_color.a = int(sv_alpha*255)
+            shape_in_outer_penumbra.fill_color = fill_color
+
+    shapes['penumbras'] += [
+        shape_in_inner_penumbra
+        for bv in bvs['penumbras']
+        for shape_in_inner_penumbra in bv.shapes_inner_penumbras
+    ]
+    shapes['penumbras'] += [
+        shape_in_outer_penumbra
+        for bv in bvs['penumbras']
+        for shape_in_outer_penumbra in bv.shapes_outer_penumbras
+    ]
+    
     return shapes

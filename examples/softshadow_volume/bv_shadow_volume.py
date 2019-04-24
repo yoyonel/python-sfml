@@ -9,7 +9,7 @@ from softshadow_volume.compute_intersection import (
 from softshadow_volume.vector2_tools import normalize, compute_middle
 
 
-def construct_shape_shadow_volume(
+def construct_bounding_volume_for_shadow(
         pos_light: sf.Vector2,
         radius_influence_circle: float,
         clipped_edge_with_influence_circle: List[sf.Vector2],

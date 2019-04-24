@@ -24,24 +24,39 @@ def to_vec3(v: sf.Vector2, z: float = 0) -> sf.Vector3:
     return sf.Vector3(*v, z)
 
 
-def prod_vec(v0: sf.Vector3, v1: sf.Vector3) -> sf.Vector3:
+def prod_vec3(v0: sf.Vector3, v1: sf.Vector3) -> sf.Vector3:
     """
     
     :param v0: 
     :param v1: 
     :return:
 
-    >>> prod_vec(sf.Vector3(), sf.Vector3())
+    >>> prod_vec3(sf.Vector3(), sf.Vector3())
     Vector3(x=0, y=0, z=0)
-    >>> prod_vec(sf.Vector3(1, 0, 0), sf.Vector3(0, 1, 0))
+    >>> prod_vec3(sf.Vector3(1, 0, 0), sf.Vector3(0, 1, 0))
     Vector3(x=0, y=0, z=1)
-    >>> prod_vec(sf.Vector3(0, 1, 0), sf.Vector3(0, 0, 1))
+    >>> prod_vec3(sf.Vector3(0, 1, 0), sf.Vector3(0, 0, 1))
     Vector3(x=1, y=0, z=0)
-    >>> prod_vec(sf.Vector3(0, 0, 1), sf.Vector3(1, 0, 0))
+    >>> prod_vec3(sf.Vector3(0, 0, 1), sf.Vector3(1, 0, 0))
     Vector3(x=0, y=1, z=0)
-    >>> prod_vec(sf.Vector3(1, 0, 0), sf.Vector3(0, 0, 1))
+    >>> prod_vec3(sf.Vector3(1, 0, 0), sf.Vector3(0, 0, 1))
     Vector3(x=0, y=-1, z=0)
     """
     return sf.Vector3(v0.y * v1.z - v0.z * v1.y,
                       v0.z * v1.x - v0.x * v1.z,
                       v0.x * v1.y - v0.y * v1.x)
+
+
+def dot_v3(p1: sf.Vector3, p2: sf.Vector3) -> float:
+    """
+
+    :param p1:
+    :param p2:
+    :return:
+
+    >>> dot_v3(sf.Vector3(), sf.Vector3())
+    0
+    >>> dot_v3(sf.Vector3(1, -1), sf.Vector3(1, 1))
+    0
+    """
+    return (p1.x * p2.x) + (p1.y * p2.y) + (p1.z * p2.z)

@@ -190,7 +190,7 @@ def main():
                 app.draw(player.sprite)
             _render_car_player()
 
-            # render text with car speed
+            # renderer text with car speed
             speed_text.string = "{:.0f} kmh".format(player.speed)
             app.draw(speed_text)
 
