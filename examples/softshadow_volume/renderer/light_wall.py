@@ -17,7 +17,7 @@ def build_shapes_for_light_wall(
                          outline_color=sf.Color.GREEN,
                          fill_color=sf.Color.RED)
 
-    bvs = lw.build_bounding_volumes_for_shadow_volumes(bv_hs_color=sf.Color.RED)
+    bvs = lw.build_bounding_volumes_for_shadow_volumes(sf.Color.BLUE)
 
     shapes = {
         "vertex": [

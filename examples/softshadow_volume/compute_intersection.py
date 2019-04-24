@@ -126,7 +126,7 @@ def compute_intersection_circle_circle(
         r0: float,
         o1: sf.Vector2,
         r1: float
-) -> Optional[Tuple[sf.Vector2, sf.Vector2]]:
+) -> Optional[List[sf.Vector2]]:
     """
     // url: http://mathworld.wolfram.com/Circle-CircleIntersection.html
     // Methode utilisant un changement de repere (2D)

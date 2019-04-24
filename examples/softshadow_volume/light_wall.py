@@ -98,7 +98,7 @@ class LightWall:
                 bounding_volumes_for_penumbras = construct_bounding_volumes_for_penumbras_volumes(
                     clipped_edge_in_ls,
                     self.light,
-                    sf.Color.BLUE
+                    sf.Color.RED
                 )
                 bvs['penumbras'] += bounding_volumes_for_penumbras
         return bvs
