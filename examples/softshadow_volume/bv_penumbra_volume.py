@@ -3,18 +3,16 @@ TODO: pénombres
 - travailler sur la nomenclature/naming => c'est la fête du slip :p
 - continuer à écrire des tests portant sur des propriétés géométriques
 """
-from typing import List, Container
-
-from numpy.core._multiarray_umath import sign
 from sfml import sf
+from typing import List, Container
 
 from softshadow_volume.bounding_volume import BoundingVolumePenumbra
 from softshadow_volume.compute_intersection import (
-    compute_intersection_solid_angle_2d,
     compute_intersection_of_tangents_lines_on_circle,
-    compute_intersection_circle_circle, compute_intersection_line_origin_circle)
+    compute_intersection_line_origin_circle,
+    compute_projectives_centers)
 from softshadow_volume.light import Light
-from softshadow_volume.vector2_tools import normalize, det, norm, dot
+from softshadow_volume.vector2_tools import det
 from softshadow_volume.vector3_tools import to_vec3, prod_vec3
 
 
@@ -34,12 +32,6 @@ def construct_bounding_volumes_for_penumbras_volumes(
 
     https://pysfml2-cython.readthedocs.io/en/latest/reference/graphics/drawing.html#sfml.ConvexShape
     """
-    p_light_for_edge = []
-    proj_p_light = []
-    bv = []
-    shapes_inner_penumbras = []
-    shapes_outer_penumbras = []
-
     def _build_convex_shape(
             vertices: Container[sf.Vector2],
             c: sf.Color = color,
@@ -66,6 +58,12 @@ def construct_bounding_volumes_for_penumbras_volumes(
         return 'outer' if (ori_el and ori_pc) or not (
                     ori_el or ori_pc) else 'inner'
 
+    p_light_for_edge = []
+    proj_p_light = []
+    bv = []
+    shapes_inner_penumbras = []
+    shapes_outer_penumbras = []
+
     vdir_edge = clipped_edge_in_ls[1] - clipped_edge_in_ls[0]
 
     for p_e, vdir_edge_orientation in zip(clipped_edge_in_ls, [+1, -1]):
@@ -74,17 +72,9 @@ def construct_bounding_volumes_for_penumbras_volumes(
             p_e
         )
 
-        # TODO: need to be more smart here !
         # projective centers for edge's vertex
-        # proj_centers = [
-        #     p * light.inner_radius
-        #     for p in compute_intersection_solid_angle_2d(p_e)
-        # ]
-        mid_p_e_light = p_e * 0.5
-        proj_centers = compute_intersection_circle_circle(
-            sf.Vector2(), light.inner_radius,
-            mid_p_e_light, norm(mid_p_e_light)
-        )
+        proj_centers = compute_projectives_centers(p_e, light.inner_radius)
+
         # compute light solid angles for each edge's vertices
         p_light_for_edge.append(proj_centers)
 
@@ -92,7 +82,6 @@ def construct_bounding_volumes_for_penumbras_volumes(
         for proj_center in proj_centers:
             # edge's vertex projection
             # with center projection on influence circle
-            # proj_p_e = normalize(p_e - proj_center) * light.influence_radius
             proj_center_to_p_e = p_e - proj_center
             solutions = compute_intersection_line_origin_circle(
                 p_e,

@@ -38,7 +38,7 @@ class LightWall:
     ) -> Dict[str, List[Union[BoundingVolume, BoundingVolumePenumbra]]]:
         bvs = defaultdict(list)
 
-        # Est ce que le segment est à l'interieur du cercle de lumière ?
+        # Edge/wall inside the (inner) light's circle ?
         intersections_with_inner_circle = self.clip_wall_with_light()
         if len(intersections_with_inner_circle) == 2:
             # On construit la shape englobante pour l'influence de ce
@@ -68,8 +68,9 @@ class LightWall:
                                self.v1 - self.light.pos,
                                *intersections_with_inner_circle)
             ]
-        # sinon le segment est en dehors du disque de lumiere
+        # otherwise edge is outside the (inner) light's circle
         else:
+            # clip edge with influence light's circle
             clipped_edge = clip_edge_with_circle(
                 self.v0, self.v1, self.light.pos,
                 self.light.influence_radius

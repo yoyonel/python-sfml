@@ -234,3 +234,37 @@ def compute_intersection_solid_angle_2d(
         )
         for solid_angle_vector in solid_angle_vectors
     ]
+
+
+def compute_projectives_centers(
+        p_ls: sf.Vector2,
+        inner_radius: float,
+) -> List[sf.Vector2]:
+    """
+
+    Using Pythagore to resolve the problem.
+
+    :param p_ls:
+    :param inner_radius:
+    :return:
+    """
+    # convert into 1D problem
+    norm_p = norm(p_ls)
+    # Pythagore => cosinus -> sinus
+    cos_theta_cp = inner_radius / norm_p
+    sin_theta_cp = sqrt(1 - cos_theta_cp ** 2)
+    proj_centers_ls = (
+        sf.Vector2(cos_theta_cp, sign_factor*sin_theta_cp) * inner_radius
+        for sign_factor in (+1, -1)
+    )
+
+    # return back to 2d problem with 2d rotation
+    # 2D orientation
+    cos_theta_p, sin_theta_p = p_ls / norm_p
+    return [
+        sf.Vector2(
+            proj_center_ls.x * cos_theta_p - proj_center_ls.y * sin_theta_p,
+            proj_center_ls.x * sin_theta_p + proj_center_ls.y * cos_theta_p,
+        )
+        for proj_center_ls in proj_centers_ls
+    ]
