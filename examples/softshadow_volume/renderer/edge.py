@@ -3,8 +3,8 @@
 from sfml import sf
 
 
-def build_edge_shape(v0: sf.Vector2, v1: sf.Vector2,
-                     color: sf.Color) -> sf.Drawable:
+def build_shape_for_edge(v0: sf.Vector2, v1: sf.Vector2,
+                         color: sf.Color) -> sf.Drawable:
     """
 
     :param v0:

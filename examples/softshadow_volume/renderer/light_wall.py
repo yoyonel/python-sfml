@@ -4,8 +4,8 @@ from typing import Dict, List
 
 from sfml import sf
 
-from softshadow_volume.renderer.circle import build_circle_shape
-from softshadow_volume.renderer.edge import build_edge_shape
+from softshadow_volume.renderer.circle import build_shape_for_circle
+from softshadow_volume.renderer.edge import build_shape_for_edge
 from softshadow_volume.light_wall import LightWall
 
 
@@ -21,10 +21,10 @@ def build_shapes_for_light_wall(
 
     shapes = {
         "vertex": [
-            build_circle_shape(radius=2.5, position=v, **vertex_params)
+            build_shape_for_circle(radius=2.5, position=v, **vertex_params)
             for v in (lw.v0, lw.v1)
         ],
-        "edge": build_edge_shape(lw.v0, lw.v1, sf.Color.GREEN),
+        "edge": build_shape_for_edge(lw.v0, lw.v1, sf.Color.GREEN),
         'shadow_volumes': []
     }
     for bv in bvs['hard_shadow']:
@@ -38,7 +38,7 @@ def build_shapes_for_light_wall(
     ]
 
     hsv_points = [
-        build_circle_shape(
+        build_shape_for_circle(
             radius=1.5,
             position=shape.get_point(i) + shape.position,
             **vertex_params
@@ -49,7 +49,7 @@ def build_shapes_for_light_wall(
     shapes['shadow_volumes'] += hsv_points
 
     shapes['shadow_volumes'] += [
-        build_circle_shape(
+        build_shape_for_circle(
             radius=5,
             position=p,
             fill_color=sf.Color.BLUE
@@ -60,7 +60,7 @@ def build_shapes_for_light_wall(
     # penumbras
     shapes['penumbras'] = []
     cpl_points = [
-        build_circle_shape(
+        build_shape_for_circle(
             radius=2,
             position=proj_center_light + lw.light.pos,
             outline_color=sf.Color.RED,
@@ -74,7 +74,7 @@ def build_shapes_for_light_wall(
 
     #
     proj_edge_cpl_points = [
-        build_circle_shape(
+        build_shape_for_circle(
             radius=2,
             position=proj_vertex_with_projs_light + lw.light.pos,
             outline_color=sf.Color.RED,
@@ -88,7 +88,7 @@ def build_shapes_for_light_wall(
 
     #
     proj_edge_cpl_points = [
-        build_circle_shape(
+        build_shape_for_circle(
             radius=2,
             position=p_bv + lw.light.pos,
             outline_color=sf.Color(255, 64, 64, 255),

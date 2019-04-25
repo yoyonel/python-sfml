@@ -3,7 +3,7 @@
 from sfml import sf
 
 
-def build_circle_shape(
+def build_shape_for_circle(
         radius: float,
         position: sf.Vector2,
         outline_thickness=2,
@@ -16,7 +16,8 @@ def build_circle_shape(
     shape.outline_color = outline_color
     shape.fill_color = fill_color
     #
-    shape.origin = sf.Vector2(radius, radius) * 0.5
-    shape.position = position - sf.Vector2(radius, radius) * 0.5
+    origin = sf.Vector2(radius, radius) * 0.5
+    shape.origin = origin
+    shape.position = position - origin
 
     return shape
