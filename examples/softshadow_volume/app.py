@@ -1,12 +1,12 @@
 """
 """
-from math import cos, sin
-from sfml import sf
+import logging
 
-from softshadow_volume.renderer.light import build_shapes_for_light
-from softshadow_volume.renderer.light_wall import build_shapes_for_light_wall
+from sfml import sf
 from softshadow_volume.light import Light
 from softshadow_volume.light_wall import LightWall
+from softshadow_volume.renderer.light import build_shapes_for_light
+from softshadow_volume.renderer.light_wall import build_shapes_for_light_wall
 
 
 class Effect(sf.Drawable):
@@ -98,7 +98,15 @@ class DemoShadowVolume(Effect):
             target.draw(shape, states)
 
 
+def init_logger():
+    logging.basicConfig(
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.DEBUG)
+
+
 if __name__ == "__main__":
+    init_logger()
+
     # create the main window
     window = sf.RenderWindow(sf.VideoMode(800, 600),
                              "pySFML - 2D Soft Shadow Volume")

@@ -3,17 +3,22 @@ TODO: pénombres
 - travailler sur la nomenclature/naming => c'est la fête du slip :p
 - continuer à écrire des tests portant sur des propriétés géométriques
 """
-from sfml import sf
+import logging
 from typing import List, Container
 
+import numpy as np
+
+from sfml import sf
 from softshadow_volume.bounding_volume import BoundingVolumePenumbra
 from softshadow_volume.compute_intersection import (
     compute_intersection_of_tangents_lines_on_circle,
     compute_intersection_line_origin_circle,
-    compute_projectives_centers)
+    compute_projectives_centers, SolutionsForQuadraticEquation)
 from softshadow_volume.light import Light
-from softshadow_volume.vector2_tools import det
+from softshadow_volume.vector2_tools import det, norm2
 from softshadow_volume.vector3_tools import to_vec3, prod_vec3
+
+logger = logging.getLogger(__name__)
 
 
 def construct_bounding_volumes_for_penumbras_volumes(
@@ -32,6 +37,7 @@ def construct_bounding_volumes_for_penumbras_volumes(
 
     https://pysfml2-cython.readthedocs.io/en/latest/reference/graphics/drawing.html#sfml.ConvexShape
     """
+
     def _build_convex_shape(
             vertices: Container[sf.Vector2],
             c: sf.Color = color,
@@ -56,7 +62,7 @@ def construct_bounding_volumes_for_penumbras_volumes(
 
     def find_penumbra_type_name(ori_el: bool, ori_pc: bool) -> str:
         return 'outer' if (ori_el and ori_pc) or not (
-                    ori_el or ori_pc) else 'inner'
+                ori_el or ori_pc) else 'inner'
 
     p_light_for_edge = []
     proj_p_light = []
@@ -83,14 +89,38 @@ def construct_bounding_volumes_for_penumbras_volumes(
             # edge's vertex projection
             # with center projection on influence circle
             proj_center_to_p_e = p_e - proj_center
-            solutions = compute_intersection_line_origin_circle(
-                p_e,
-                proj_center_to_p_e,
-                light.influence_radius
-            )
-
-            # TODO: reinforce the stability
-            assert solutions.has_real_solutions
+            
+            # FIXME: need to improve stability !
+            if np.isclose(norm2(proj_center_to_p_e), 0.):
+                solutions = SolutionsForQuadraticEquation(True, [0.])
+            else:
+                solutions = compute_intersection_line_origin_circle(
+                    p_e,
+                    proj_center_to_p_e,
+                    light.influence_radius
+                )
+                # TODO: reinforce the stability
+                if not solutions.has_real_solutions:
+                    # RuntimeError:
+                    # compute_intersection_line_origin_circle(
+                    #     p_e=(-12.0, -16.0),
+                    #     proj_center_to_p_e=(0.0, 0.0),
+                    #     light.influence_radius = 350
+                    # )
+                    # has
+                    # 0(real)
+                    # solutions( = SolutionsForQuadraticEquation(
+                    #     has_real_solutions=False, roots=array([], dtype=float64)))
+                    msg_err = f"""
+                    compute_intersection_line_origin_circle(
+                        p_e={p_e},
+                        proj_center_to_p_e={proj_center_to_p_e},
+                        light.influence_radius={light.influence_radius}
+                    )
+                    has 0 (real) solutions(={solutions})
+                    """
+                    logger.error(msg_err)
+                    raise RuntimeError(msg_err)
 
             proj_p_e = p_e + proj_center_to_p_e * max(solutions.roots)
             # project edge's vertex from points on light
