@@ -133,7 +133,7 @@ ext_modules=[system, window, graphics, audio, network]
 install_requires = [
     'PyOpenGL>=3.1.0',
     'numpy>=1.16.2',
-    'tifffile>>=2019.3.18',
+    'tifffile>=2019.3.18',
 ]
 
 if sys.version_info < (3, 4):
